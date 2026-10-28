@@ -22,7 +22,7 @@ $("#fileImport").addEventListener("change", (e) => {
     try {
       const s = JSON.parse(r.result);
       if (!s.people || !s.releases || !s.tasks) throw 0;
-      state = s;
+      state = migrateTasks(s);
       if (!state.activeId && state.releases[0])
         state.activeId = state.releases[0].id;
       save();
@@ -93,7 +93,7 @@ async function restoreBackup(name) {
     });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error);
-    state = j.data;
+    state = migrateTasks(j.data);
     if (state.releases.length && !state.activeId)
       state.activeId = state.releases[0].id;
     render();

@@ -3,11 +3,18 @@
    ============================================================ */
 /* ============ состояние и хранение ============ */
 const KEY = "team-planner-v1";
-let state = { people: [], releases: [], tasks: [], activeId: null };
+let state = { team: "", people: [], releases: [], tasks: [], activeId: null };
 let backend = null; // 'server' | 'browser'
 let writeTimer = null;
 let saving = false,
   dirtyWhileSaving = false;
+
+/* Приложение открыто по http — значит, его отдал наш сервер.
+   При открытии файлом (file://) сервера нет по определению: там ни баннер
+   о потере связи, ни кнопка «Завершить» не нужны. */
+const SERVED = location.protocol === "http:" || location.protocol === "https:";
+let unsaved = false; // есть правки, которые не дошли до диска
+let quitting = false; // идёт штатное завершение — связь больше не проверяем
 
 function valid(s) {
   return (
@@ -18,13 +25,45 @@ function valid(s) {
   );
 }
 
-/* Статус места хранения в шапке */
+/* Статус места хранения в шапке.
+   Это единственная точка, которая сообщает пользователю о связи с сервером:
+   индикатор и баннер внизу обновляются отсюда, чтобы не разъезжаться. */
+let statusMode = "";
+let linkLost = false; // сервер был, но перестал отвечать
+
 function setStatus(mode, text) {
+  statusMode = mode;
   const el = document.getElementById("storeStatus");
-  if (!el) return;
-  el.className =
-    "store " + (mode === "server" ? "on" : mode === "browser" ? "off" : "");
-  el.innerHTML = '<span class="sdot"></span>' + text;
+  if (el) {
+    const cls =
+      mode === "server"
+        ? "on"
+        : mode === "browser"
+          ? "warn"
+          : mode === "error"
+            ? "err"
+            : "";
+    const clickable = mode === "error" || mode === "browser";
+    el.className = "store " + cls + (clickable ? " is-click" : "");
+    el.innerHTML = '<span class="sdot"></span>' + text;
+    el.title = clickable
+      ? "Нажмите, чтобы проверить подключение"
+      : "Где хранятся данные";
+  }
+  unsaved = mode === "error";
+  linkLost =
+    SERVED && !quitting && (mode === "error" || mode === "browser");
+  renderBanner();
+}
+
+/* Красная плашка внизу по центру: висит, пока связи нет.
+   Появляется только если приложение открыто с сервера — при запуске
+   файлом (file://) сервера нет по определению. */
+function renderBanner() {
+  const el = document.getElementById("serverBanner");
+  if (el) el.classList.toggle("show", linkLost);
+  // тост внизу по центру не должен наезжать на плашку
+  document.body.classList.toggle("has-banner", linkLost);
 }
 
 function markDirty() {
@@ -36,6 +75,47 @@ function persist() {
   if (backend === "server") persistServer();
   else if (backend === "browser") persistBrowser();
 }
+
+/* Сохранить немедленно — вызывается перед завершением работы, чтобы
+   последняя правка (те самые 0.5 сек задержки) не потерялась. */
+function pushState() {
+  clearTimeout(writeTimer);
+  writeTimer = null;
+  if (backend === "browser") {
+    persistBrowser();
+    return Promise.resolve();
+  }
+  if (backend !== "server") return Promise.resolve();
+  return fetch("/api/data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(state),
+  })
+    .then((r) => (r.ok ? undefined : Promise.reject(r)))
+    .catch(() => {});
+}
+
+/* При закрытии вкладки промис дождаться некому — sendBeacon переживает
+   выгрузку страницы, fetch в этот момент браузер может оборвать.
+   Если прошлая запись не удалась (unsaved), последнюю правку тоже шлём. */
+function flushBeacon() {
+  if (!writeTimer && !unsaved) return;
+  clearTimeout(writeTimer);
+  writeTimer = null;
+  if (backend === "browser") {
+    persistBrowser();
+    return;
+  }
+  if (backend !== "server") return;
+  try {
+    navigator.sendBeacon(
+      "/api/data",
+      new Blob([JSON.stringify(state)], { type: "application/json" }),
+    );
+  } catch (e) {}
+}
+
+window.addEventListener("pagehide", flushBeacon);
 
 function persistServer() {
   if (saving) {
@@ -51,9 +131,15 @@ function persistServer() {
     .then((r) => (r.ok ? r.json() : Promise.reject(r)))
     .then(() => {
       setStatus("server", "Сохранено в data.json");
+      dropBrowserCopy();
     })
     .catch(() => {
-      setStatus("", "Не удалось сохранить — проверьте, запущен ли сервер");
+      // на диск не легло — хотя бы не теряем правки при перезагрузке вкладки:
+      // при следующем старте приложение предложит взять их из браузера
+      try {
+        localStorage.setItem(KEY, JSON.stringify(state));
+      } catch (e) {}
+      setStatus("error", "Нет подключения — данные не сохранены");
     })
     .finally(() => {
       saving = false;
@@ -64,12 +150,21 @@ function persistServer() {
     });
 }
 
+/* Когда данные легли на диск, браузерная копия больше не нужна: иначе при
+   старте приложение будет каждый раз спрашивать «данные разные». */
+function dropBrowserCopy() {
+  if (backend !== "server") return;
+  try {
+    localStorage.removeItem(KEY);
+  } catch (e) {}
+}
+
 function persistBrowser() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
     setStatus("browser", "Хранение: в браузере (сервер не найден)");
   } catch (e) {
-    setStatus("", "Не удалось сохранить в браузере");
+    setStatus("error", "Не удалось сохранить в браузере");
   }
 }
 
@@ -99,7 +194,7 @@ async function initStorage() {
     } catch (e) {}
   }
 
-  if (initial) state = initial;
+  if (initial) state = migrateTasks(initial);
 
   // предупредить, если в файле и в браузере разные данные
   try {
@@ -107,10 +202,12 @@ async function initStorage() {
     if (raw) {
       const local = JSON.parse(raw);
       if (valid(local)) {
+        // сравниваем уже в одной модели, иначе миграция даст ложное «разные»
+        migrateTasks(local);
         if (!initial) {
           state = local; // файла нет — берём из браузера
         } else if (
-          JSON.stringify(local.tasks) !== JSON.stringify(initial.tasks) &&
+          JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) &&
           local.tasks.length
         ) {
           pendingLocal = local; // разные — спросим после отрисовки
@@ -136,13 +233,49 @@ function tasksOf(personId, releaseId) {
     (t) => t.personId === personId && t.releaseId === releaseId,
   );
 }
+/* загрузка дня: сумма долей задач, попавших на этот день */
 function loadAt(personId, rel, dayIdx) {
   let sum = 0;
   tasksOf(personId, rel.id).forEach((t) => {
-    const s = diffDays(rel.start, t.start),
-      e = s + t.days;
-    const ov = Math.max(0, Math.min(e, dayIdx + 1) - Math.max(s, dayIdx));
-    sum += ov;
+    taskLayout(t, rel.start).forEach((seg) => {
+      if (seg.i === dayIdx) sum += seg.amount;
+    });
   });
   return sum;
+}
+
+/* --- миграция старых данных ---
+   До п.8 поле days считалось в календарных днях. Пересчитываем в рабочие
+   так, чтобы карточка заканчивалась там же, где и раньше: суммируем доли
+   только по рабочим дням прежнего периода. Отпуск/больничный остаются
+   календарными (weekend = true). */
+function migrateTasks(s) {
+  (s.tasks || []).forEach((t) => {
+    if (t.daysMode === "work") return; // уже новая модель
+    const cal = t.type === "vacation" || t.type === "sick";
+    if (cal) {
+      t.weekend = true;
+      t.daysMode = "work";
+      return;
+    }
+    const D = Number(t.days) || 0;
+    let wd = 0;
+    for (let i = 0; i < Math.ceil(D); i++) {
+      if (isWorkday(addDays(t.start, i))) wd = round(wd + Math.min(1, D - i));
+    }
+    if (wd > 0) {
+      t.days = wd;
+      t.weekend = false;
+    } else {
+      // задача целиком на выходных — оставляем как календарную
+      t.weekend = true;
+    }
+    t.daysMode = "work";
+  });
+  s.version = 2;
+  return s;
+}
+/* перевести уже загруженные локальные данные в новую модель */
+function migrateState() {
+  return migrateTasks(state);
 }

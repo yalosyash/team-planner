@@ -18,7 +18,22 @@ function openRelease(id) {
 }
 function nextRelNum() {
   if (!state.releases.length) return "1.0";
-  return "1." + state.releases.length;
+  // берём последний релиз по позиции в списке и увеличиваем последний
+  // числовой сегмент: 54.5 → 54.6, 0.54 → 0.55, 7 → 8
+  const last = state.releases[state.releases.length - 1].number;
+  const raw = String(last == null ? "" : last).trim();
+  if (!raw) return "1.0";
+  const parts = raw.split(".");
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (!/^\d+$/.test(parts[i])) continue;
+    const n = parseInt(parts[i], 10) + 1;
+    // сохраняем ширину номера с ведущими нулями: 0.054 → 0.055
+    const keepPad = parts[i].length > 1 && parts[i][0] === "0";
+    parts[i] = keepPad ? String(n).padStart(parts[i].length, "0") : String(n);
+    return parts.join(".");
+  }
+  // в номере нет ни одного числа (например, «RC») — нумеруем заново
+  return raw + ".1";
 }
 $("#rSave").addEventListener("click", () => {
   const num = $("#rNum").value.trim();

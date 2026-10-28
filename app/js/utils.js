@@ -42,6 +42,45 @@ function addDays(s, n) {
 function diffDays(a, b) {
   return Math.round((parseISO(b) - parseISO(a)) / 86400000);
 }
+/* --- рабочие дни: выходные — суббота и воскресенье --- */
+function isWeekend(s) {
+  const g = parseISO(s).getDay();
+  return g === 0 || g === 6;
+}
+function isWorkday(s) {
+  return !isWeekend(s);
+}
+/* ближайший рабочий день вперёд (если день и так рабочий — он же) */
+function nextWorkday(s) {
+  let d = s;
+  while (isWeekend(d)) d = addDays(d, 1);
+  return d;
+}
+/* ближайший рабочий день назад */
+function prevWorkday(s) {
+  let d = s;
+  while (isWeekend(d)) d = addDays(d, -1);
+  return d;
+}
+/* сколько рабочих дней в периоде [a, b] включительно */
+function workdaysBetween(a, b) {
+  if (diffDays(a, b) < 0) return 0;
+  let n = 0;
+  eachDay(a, b).forEach((d) => {
+    if (isWorkday(d)) n++;
+  });
+  return n;
+}
+/* n-й рабочий день, считая от s включительно */
+function addWorkdays(s, n) {
+  let d = nextWorkday(s),
+    left = n;
+  while (left > 0) {
+    d = addDays(d, 1);
+    if (isWorkday(d)) left--;
+  }
+  return d;
+}
 function fmt(s) {
   const d = parseISO(s);
   return (

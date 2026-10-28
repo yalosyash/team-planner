@@ -1,16 +1,27 @@
 @echo off
 setlocal
-title ╨Я╨╗╨░╨╜╨╕╤А╨╛╨▓╤Й╨╕╨║ ╨╖╨░╨│╤А╤Г╨╖╨║╨╕ ╨║╨╛╨╝╨░╨╜╨┤╤Л
 cd /d "%~dp0"
 
-where node >nul 2>nul
-if errorlevel 1 (
-  echo Node.js ╨╜╨╡ ╨╜╨░╨╣╨┤╨╡╨╜. ╨Ю╤В╨║╤А╤Л╨▓╨░╤О ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╨╡ ╨▒╨╡╨╖ ╨░╨▓╤В╨╛╤Б╨╛╤Е╤А╨░╨╜╨╡╨╜╨╕╤П ╨▓ ╤Д╨░╨╣╨╗.
-  echo ╨Ф╨░╨╜╨╜╤Л╨╡ ╨▒╤Г╨┤╤Г╤В ╤Е╤А╨░╨╜╨╕╤В╤М╤Б╤П ╨▓ ╨▒╤А╨░╤Г╨╖╨╡╤А╨╡, ╨╕╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╣╤В╨╡ ╨║╨╜╨╛╨┐╨║╨╕ ╨н╨║╤Б╨┐╨╛╤А╤В/╨Ш╨╝╨┐╨╛╤А╤В.
-  echo.
-  start "" "%~dp0app\index.html"
-  timeout /t 3 >nul
-  exit /b
+rem Ярлык с иконкой рядом с папкой: у .bat своей иконки в Windows нет.
+rem Скрипт сам выходит, если ярлык уже есть, и ничего не ломает, если
+rem Windows запрещает .vbs - тогда просто запустится start.bat.
+start "" wscript.exe //nologo "%~dp0create-shortcut.vbs"
+
+for /f "delims=" %%N in ('where node 2^>nul') do (
+  set "NODE=%%N"
+  goto :have_node
 )
 
-node "%~dp0server.js"
+echo Node.js не найден. Открываю приложение без автосохранения в файл.
+echo Данные будут храниться в браузере, используйте кнопки Экспорт/Импорт.
+echo.
+start "" "%~dp0app\index.html"
+timeout /t 3 >nul
+exit /b
+
+:have_node
+rem Запуск без консольного окна. Сервер работает в фоне и сам выключается,
+rem когда закрыта последняя вкладка планировщика (см. app/js/keepalive.js).
+rem Если сервер уже запущен, второй не поднимается - просто откроется браузер.
+start "" wscript.exe //nologo "%~dp0start-hidden.vbs" "%NODE%"
+exit /b

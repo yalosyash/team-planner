@@ -11,8 +11,40 @@ const APP = path.join(ROOT, "app"); // публичный код приложе�
 const DATA_DIR = path.join(ROOT, "data"); // личные данные (в git не попадают)
 const DATA = path.join(DATA_DIR, "data.json");
 const BACKUPS = path.join(DATA_DIR, "backups");
+const PID_FILE = path.join(DATA_DIR, "server.pid"); // чтобы найти фоновый сервер
+const LOG = path.join(DATA_DIR, "server.log"); // журнал (окно-то скрытое)
 const KEEP = 20; // сколько версий хранить
 const SNAP_GAP = 15 * 1000; // не чаще одного снимка в 15 сек при сохранении
+const CLOSE_GRACE = 10 * 1000; // пауза перед остановкой, когда вкладок не осталось
+// Вкладка шлёт сигнал раз в 30 сек. Браузер «душит» таймеры в фоновых
+// вкладках (до одного пробуждения в минуту), поэтому запас двойной:
+// обычное закрытие сервер замечает сразу или через пару минут, а открытое
+// приложение не будет выключено по ошибке.
+const PING_TTL = 3 * 60 * 1000;
+const STOP_CONFIRM = 60 * 1000; // вторая проверка перед остановкой сервера
+
+// Скрытый режим: запуск из start.bat, без консольного окна.
+// В нём сервер сам останавливается, когда закрыта последняя вкладка приложения.
+const HIDDEN = process.argv.includes("--hidden");
+
+// В скрытом режиме сообщения некуда печатать — пишем их в data/server.log
+if (HIDDEN) {
+  const say = (...args) => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      if (fs.existsSync(LOG) && fs.statSync(LOG).size > 1024 * 1024) {
+        fs.writeFileSync(LOG, ""); // журнал не должен расти бесконечно
+      }
+      fs.appendFileSync(
+        LOG,
+        `[${new Date().toISOString()}] ${args.join(" ")}\n`,
+        "utf8",
+      );
+    } catch (e) {}
+  };
+  console.log = say;
+  console.error = say;
+}
 
 const TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -103,8 +135,84 @@ function listBackups() {
     .sort((a, b) => (a.name < b.name ? 1 : -1));
 }
 
+/* ============ слежение за открытыми вкладками ============ */
+// Каждая вкладка раз в 30 сек шлёт /api/alive. Если сигналов нет дольше
+// PING_TTL, считаем, что вкладка закрыта. Когда закрыта последняя — в скрытом
+// режиме сервер сам выключается, чтобы не висел в памяти незаметно.
+const lives = new Map(); // id вкладки -> время последнего сигнала
+let stopTimer = null;
+let finalTimer = null;
+let used = false; // хотя бы одна вкладка когда-либо подключалась
+
+function shutdown(reason) {
+  try {
+    if (fs.existsSync(PID_FILE)) fs.rmSync(PID_FILE, { force: true });
+  } catch (e) {}
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1000).unref();
+}
+
+function scheduleStop(explicit) {
+  if (!HIDDEN || stopTimer || finalTimer) return;
+  stopTimer = setTimeout(() => {
+    stopTimer = null;
+    const alive = [...lives.values()].some((t) => Date.now() - t < PING_TTL);
+    if (alive) return;
+    if (explicit) {
+      // Браузер сам сообщил, что вкладка закрывается — ждать нечего.
+      console.log("Все вкладки закрыты — останавливаю сервер.");
+      shutdown("idle");
+      return;
+    }
+    // Догадка по молчанию: после сна/гибернации таймеры сервера срабатывают
+    // раньше, чем успевает ответить вкладка. Даём приложению шанс отозваться.
+    console.log("Вкладок нет — проверю ещё раз через минуту.");
+    finalTimer = setTimeout(() => {
+      finalTimer = null;
+      console.log("Все вкладки закрыты — останавливаю сервер.");
+      shutdown("idle");
+    }, STOP_CONFIRM);
+    finalTimer.unref();
+  }, CLOSE_GRACE);
+  stopTimer.unref();
+}
+
+/* Запрос от приложения доказывает, что вкладка жива — отменяем остановку. */
+function cancelStop() {
+  if (finalTimer) {
+    clearTimeout(finalTimer);
+    finalTimer = null;
+  }
+  if (stopTimer) {
+    clearTimeout(stopTimer);
+    stopTimer = null;
+  }
+}
+
+// Вкладка могла закрыться аварийно (без прощального запроса) — тогда её
+// сигнал просто перестаёт приходить. Раз в 20 секунд убираем «мёртвых»
+// и проверяем, не осталось ли ни одной живой вкладки.
+setInterval(() => {
+  const now = Date.now();
+  let removed = false;
+  for (const [id, t] of lives) {
+    if (now - t > PING_TTL) {
+      lives.delete(id);
+      removed = true;
+    }
+  }
+  if (removed) scheduleStop(false);
+}, 20 * 1000).unref();
+
+// Страховка: вкладки были, но все закрылись, не успев попрощаться
+// (например, браузер упал). Тогда сервер не нужен — проверяем в фоне.
+setInterval(() => {
+  if (HIDDEN && used && lives.size === 0) scheduleStop(false);
+}, 30 * 1000).unref();
+
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent((req.url || "").split("?")[0]);
+  if (url.startsWith("/api/")) cancelStop(); // вкладка жива — не выключаемся
 
   // --- чтение данных ---
   if (url === "/api/data" && req.method === "GET") {
@@ -195,9 +303,56 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // --- штатное завершение из интерфейса ---
+  // Сначала снимок: последние правки должны попасть в backups/, иначе
+  // «Завершить» может откатить работу до предыдущего автоснимка.
+  if (url === "/api/quit" && req.method === "POST") {
+    res.writeHead(200, { "Content-Type": TYPES[".json"] });
+    res.end('{"ok":true}');
+    console.log("Завершение из интерфейса — останавливаю сервер.");
+    snapshot("before-quit", true);
+    // ответ должен успеть уйти в браузер
+    setTimeout(() => shutdown("manual"), 120);
+    return;
+  }
+
   if (url === "/api/health") {
     res.writeHead(200, { "Content-Type": TYPES[".json"] });
     res.end(JSON.stringify({ ok: true, dataFile: DATA, backupsDir: BACKUPS }));
+    return;
+  }
+
+  // --- вкладка сообщает, что она жива ---
+  if (url === "/api/alive") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const { tab } = JSON.parse(body || "{}");
+        if (typeof tab === "string" && tab) {
+          lives.set(tab, Date.now());
+          used = true;
+        }
+      } catch (e) {}
+      res.writeHead(200, { "Content-Type": TYPES[".json"] });
+      res.end('{"ok":true}');
+    });
+    return;
+  }
+
+  // --- вкладка закрывается ---
+  if (url === "/api/bye") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        const { tab } = JSON.parse(body || "{}");
+        if (typeof tab === "string") lives.delete(tab);
+      } catch (e) {}
+      res.writeHead(200, { "Content-Type": TYPES[".json"] });
+      res.end('{"ok":true}');
+      scheduleStop(true); // вкладка попрощалась сама — ждать не нужно
+    });
     return;
   }
 
@@ -240,17 +395,81 @@ function start(port, attempt = 0) {
   server.listen(port, "127.0.0.1", () => {
     const addr = `http://127.0.0.1:${port}`;
     snapshot("start", true); // снимок при каждом запуске
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(PID_FILE, String(process.pid), "utf8");
+    } catch (e) {}
     console.log("");
     console.log("  Планировщик загрузки команды запущен");
     console.log("  Адрес:   " + addr);
     console.log("  Данные:  " + DATA);
     console.log("  Версии:  " + BACKUPS);
     console.log("");
-    console.log("  Не закрывайте это окно, пока работаете с планировщиком.");
-    console.log("  Остановить: Ctrl+C или просто закройте окно.");
+    if (HIDDEN) {
+      console.log("  Режим без окна: сервер остановится сам, когда");
+      console.log("  закроется последняя вкладка планировщика.");
+    } else {
+      console.log("  Не закрывайте это окно, пока работаете с планировщиком.");
+      console.log("  Остановить: Ctrl+C или просто закройте окно.");
+    }
     console.log("");
     exec('start "" ' + addr, () => {});
+
+    // Страховка: если браузер так и не открылся, сервер не должен висеть
+    // в памяти незаметно до перезагрузки.
+    if (HIDDEN) {
+      const guard = setTimeout(
+        () => {
+          if (!used && lives.size === 0) {
+            console.log(
+              "Ни одна вкладка не подключилась — останавливаю сервер.",
+            );
+            shutdown("never-used");
+          }
+        },
+        10 * 60 * 1000,
+      );
+      guard.unref();
+    }
   });
 }
 
-start(8787);
+/* Уже запущенный экземпляр: просто открываем его, второй сервер не поднимаем —
+   иначе два процесса писали бы в один data.json наперегонки. */
+function findRunning(port, attempt, done) {
+  if (attempt > 10) return done(null);
+  const req = http.get(
+    { host: "127.0.0.1", port, path: "/api/health", timeout: 800 },
+    (res) => {
+      let body = "";
+      res.on("data", (c) => (body += c));
+      res.on("end", () => {
+        // проверяем, что на порту именно наш планировщик
+        let ok = false;
+        try {
+          const j = JSON.parse(body);
+          ok = res.statusCode === 200 && j && j.ok && j.dataFile === DATA;
+        } catch (e) {}
+        if (ok) done(port);
+        else findRunning(port + 1, attempt + 1, done);
+      });
+    },
+  );
+  req.on("timeout", () => req.destroy());
+  req.on("error", () => findRunning(port + 1, attempt + 1, done));
+}
+
+process.on("SIGINT", () => shutdown("sigint"));
+process.on("SIGTERM", () => shutdown("sigterm"));
+
+findRunning(8787, 0, (port) => {
+  if (port) {
+    const addr = `http://127.0.0.1:${port}`;
+    console.log("Сервер уже запущен — открываю " + addr);
+    exec('start "" ' + addr, () => {});
+    // даём браузеру время открыться, затем выходим
+    setTimeout(() => process.exit(0), 1500);
+    return;
+  }
+  start(8787);
+});
