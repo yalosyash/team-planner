@@ -1,0 +1,9 @@
+# рабочие данные пользователя — не в репозиторий
+data.json
+data.json.tmp
+
+# системное
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
