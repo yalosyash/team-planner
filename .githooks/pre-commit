@@ -1,0 +1,19 @@
+#!/bin/sh
+# Защита от случайного коммита личных данных.
+# Установка: git config core.hooksPath .githooks
+# Этот хук отклоняет коммит, если в него попали data/ или backups/.
+
+blocked=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)(data/|backups/)|(^|/)(data\.json|data_[^/]*\.json|team-planner-[^/]*\.json)$|(^|/)\.env($|\.)|\.(key|pem)$')
+
+if [ -n "$blocked" ]; then
+  echo ""
+  echo "  КОММИТ ОТКЛОНЁН: обнаружены личные данные или секреты:"
+  echo "$blocked" | sed 's/^/    /'
+  echo ""
+  echo "  Уберите их из индекса:  git restore --staged <файл>"
+  echo "  и проверьте .gitignore."
+  echo ""
+  exit 1
+fi
+
+exit 0

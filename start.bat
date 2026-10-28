@@ -8,7 +8,7 @@ if errorlevel 1 (
   echo Node.js не найден. Открываю приложение без автосохранения в файл.
   echo Данные будут храниться в браузере, используйте кнопки Экспорт/Импорт.
   echo.
-  start "" "%~dp0index.html"
+  start "" "%~dp0app\index.html"
   timeout /t 3 >nul
   exit /b
 )

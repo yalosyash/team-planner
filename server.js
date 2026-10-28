@@ -7,8 +7,10 @@ const path = require("path");
 const { exec } = require("child_process");
 
 const ROOT = __dirname;
-const DATA = path.join(ROOT, "data.json");
-const BACKUPS = path.join(ROOT, "backups");
+const APP = path.join(ROOT, "app"); // публичный код приложения
+const DATA_DIR = path.join(ROOT, "data"); // личные данные (в git не попадают)
+const DATA = path.join(DATA_DIR, "data.json");
+const BACKUPS = path.join(DATA_DIR, "backups");
 const KEEP = 20; // сколько версий хранить
 const SNAP_GAP = 15 * 1000; // не чаще одного снимка в 15 сек при сохранении
 
@@ -32,6 +34,7 @@ function stamp() {
 }
 
 function writeAtomic(file, body) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = file + ".tmp";
   fs.writeFileSync(tmp, body, "utf8");
   try {
@@ -198,13 +201,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- статика ---
+  // --- статика (только из app/, папка data/ недоступна по HTTP) ---
   let file = url === "/" ? "/index.html" : url;
   const full = path.join(
-    ROOT,
+    APP,
     path.normalize(file).replace(/^(\.\.[/\\])+/, ""),
   );
-  if (!full.startsWith(ROOT)) {
+  if (!full.startsWith(APP)) {
     res.writeHead(403);
     res.end("forbidden");
     return;
