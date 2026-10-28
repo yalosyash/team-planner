@@ -1,770 +1,1858 @@
 <!doctype html>
 <html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Планировщик загрузки команды</title>
-<style>
-:root{
-  --rowH:46px;
-  --colW:190px;
-  --headH:60px;
-  --leftW:132px;
-  --line:#e8eaef;
-  --line2:#d9dde6;
-  --bg:#f5f6fa;
-  --ink:#1c2230;
-  --muted:#6b7488;
-  --accent:#3b6ef6;
-  --danger:#d94a4a;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;background:var(--bg);color:var(--ink);
-  font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  display:flex;flex-direction:column;height:100vh;overflow:hidden;
-}
-button{font:inherit;cursor:pointer;border:1px solid var(--line2);background:#fff;color:var(--ink);
-  border-radius:8px;padding:7px 12px}
-button:hover{background:#f2f4f9}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-button.primary:hover{background:#2f5fe0}
-button.danger{color:var(--danger);border-color:#f0c4c4}
-button.danger:hover{background:#fdf0f0}
-button.ghost{background:transparent;border-color:transparent;padding:4px 7px;border-radius:6px}
-button.ghost:hover{background:#eceff5}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Планировщик загрузки команды</title>
+    <style>
+      :root {
+        --rowH: 46px;
+        --colW: 190px;
+        --headH: 60px;
+        --leftW: 132px;
+        --line: #e8eaef;
+        --line2: #d9dde6;
+        --bg: #f5f6fa;
+        --ink: #1c2230;
+        --muted: #6b7488;
+        --accent: #3b6ef6;
+        --danger: #d94a4a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.35 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 1px solid var(--line2);
+        background: #fff;
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 7px 12px;
+      }
+      button:hover {
+        background: #f2f4f9;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      button.primary:hover {
+        background: #2f5fe0;
+      }
+      button.danger {
+        color: var(--danger);
+        border-color: #f0c4c4;
+      }
+      button.danger:hover {
+        background: #fdf0f0;
+      }
+      button.ghost {
+        background: transparent;
+        border-color: transparent;
+        padding: 4px 7px;
+        border-radius: 6px;
+      }
+      button.ghost:hover {
+        background: #eceff5;
+      }
 
-/* topbar */
-.topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fff;border-bottom:1px solid var(--line)}
-.brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
-.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-.actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.store{font-size:11px;color:var(--muted);border:1px solid var(--line2);border-radius:20px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.store .sdot{width:7px;height:7px;border-radius:50%;background:#c2c8d4;flex:none}
-.store.on .sdot{background:#2bb673}
-.store.on{color:#1d7a4d;border-color:#b6e0c9}
-.store.off .sdot{background:#e0a800}
-.store.off{color:#8a6d00;border-color:#ecdcae}
+      /* topbar */
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .brand .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      .actions {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .store {
+        font-size: 11px;
+        color: var(--muted);
+        border: 1px solid var(--line2);
+        border-radius: 20px;
+        padding: 4px 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .store .sdot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #c2c8d4;
+        flex: none;
+      }
+      .store.on .sdot {
+        background: #2bb673;
+      }
+      .store.on {
+        color: #1d7a4d;
+        border-color: #b6e0c9;
+      }
+      .store.off .sdot {
+        background: #e0a800;
+      }
+      .store.off {
+        color: #8a6d00;
+        border-color: #ecdcae;
+      }
 
-/* tabs */
-.tabs{display:flex;align-items:center;gap:6px;padding:8px 14px 0;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
-.tab{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 12px;border:1px solid var(--line2);border-bottom:none;
-  border-radius:9px 9px 0 0;background:#eef1f7;color:var(--muted);white-space:nowrap;cursor:pointer;font-size:13px}
-.tab:hover{background:#e6eaf3}
-.tab.active{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 -2px 0 var(--accent) inset}
-.tab .tnum{font-weight:700}
-.tab .tdate{font-size:11px;color:var(--muted);font-weight:400}
-.tab .x{opacity:.55;font-size:12px;line-height:1}
-.tab .x:hover{opacity:1;color:var(--danger)}
-.tab .edit{opacity:.55;font-size:12px}
-.tab .edit:hover{opacity:1;color:var(--accent)}
-.addtab{background:#fff;border:1px dashed var(--line2);border-radius:9px 9px 0 0;padding:7px 14px;color:var(--muted);font-weight:700}
-.addtab:hover{color:var(--accent);border-color:var(--accent)}
+      /* tabs */
+      .tabs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px 0;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        overflow-x: auto;
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px 7px 12px;
+        border: 1px solid var(--line2);
+        border-bottom: none;
+        border-radius: 9px 9px 0 0;
+        background: #eef1f7;
+        color: var(--muted);
+        white-space: nowrap;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .tab:hover {
+        background: #e6eaf3;
+      }
+      .tab.active {
+        background: #fff;
+        color: var(--ink);
+        font-weight: 600;
+        box-shadow: 0 -2px 0 var(--accent) inset;
+      }
+      .tab .tnum {
+        font-weight: 700;
+      }
+      .tab .tdate {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .tab .x {
+        opacity: 0.55;
+        font-size: 12px;
+        line-height: 1;
+      }
+      .tab .x:hover {
+        opacity: 1;
+        color: var(--danger);
+      }
+      .tab .edit {
+        opacity: 0.55;
+        font-size: 12px;
+      }
+      .tab .edit:hover {
+        opacity: 1;
+        color: var(--accent);
+      }
+      .addtab {
+        background: #fff;
+        border: 1px dashed var(--line2);
+        border-radius: 9px 9px 0 0;
+        padding: 7px 14px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .addtab:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
 
-/* board */
-.board{flex:1;overflow:auto;background:#fff;position:relative}
-.grid{display:flex;min-width:max-content;align-items:flex-start}
-.left{position:sticky;left:0;z-index:5;background:#fff;display:flex;flex-direction:column;border-right:2px solid var(--line2)}
-.corner{height:var(--headH);min-height:var(--headH);position:sticky;top:0;z-index:7;background:#fff;
-  border-bottom:2px solid var(--line2);display:flex;align-items:center;justify-content:center;
-  font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;width:var(--leftW)}
-.dates{display:flex;flex-direction:column}
-.date-cell{height:var(--rowH);min-height:var(--rowH);width:var(--leftW);display:flex;align-items:center;gap:8px;
-  padding:0 10px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
-.date-cell.wk{background:#f4f6fa}
-.date-cell .dnum{font-weight:700;color:var(--ink);min-width:18px;text-align:right}
-.date-cell .ddate{white-space:nowrap}
-.cols{display:flex;flex-direction:column}
-.heads{display:flex;position:sticky;top:0;z-index:4;background:#fff}
-.head{width:var(--colW);min-width:var(--colW);height:var(--headH);border-bottom:2px solid var(--line2);
-  border-right:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:3px;background:#fff}
-.head .pname{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.head .psum{font-size:11px;color:var(--muted)}
-.bodies{display:flex}
-.person-col{width:var(--colW);min-width:var(--colW);position:relative;border-right:1px solid var(--line);
-  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--rowH) - 1px),var(--line) calc(var(--rowH) - 1px),var(--line) var(--rowH))}
-.wk-cell{position:absolute;left:0;right:0;background:rgba(120,140,180,.06);pointer-events:none}
-.over{position:absolute;left:0;right:0;background:rgba(217,74,74,.10);border-top:1px dashed rgba(217,74,74,.45);pointer-events:none}
-.today{position:absolute;left:0;right:0;height:0;border-top:2px solid rgba(217,74,74,.75);pointer-events:none;z-index:2}
+      /* board */
+      .board {
+        flex: 1;
+        overflow: auto;
+        background: #fff;
+        position: relative;
+      }
+      .grid {
+        display: flex;
+        min-width: max-content;
+        align-items: flex-start;
+      }
+      .left {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        border-right: 2px solid var(--line2);
+      }
+      .corner {
+        height: var(--headH);
+        min-height: var(--headH);
+        position: sticky;
+        top: 0;
+        z-index: 7;
+        background: #fff;
+        border-bottom: 2px solid var(--line2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        width: var(--leftW);
+      }
+      .dates {
+        display: flex;
+        flex-direction: column;
+      }
+      .date-cell {
+        height: var(--rowH);
+        min-height: var(--rowH);
+        width: var(--leftW);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .date-cell.wk {
+        background: #f4f6fa;
+      }
+      .date-cell .dnum {
+        font-weight: 700;
+        color: var(--ink);
+        min-width: 18px;
+        text-align: right;
+      }
+      .date-cell .ddate {
+        white-space: nowrap;
+      }
+      .cols {
+        display: flex;
+        flex-direction: column;
+      }
+      .heads {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        background: #fff;
+      }
+      .head {
+        width: var(--colW);
+        min-width: var(--colW);
+        height: var(--headH);
+        border-bottom: 2px solid var(--line2);
+        border-right: 1px solid var(--line);
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+        background: #fff;
+      }
+      .head .pname {
+        font-weight: 600;
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .head .psum {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .bodies {
+        display: flex;
+      }
+      .person-col {
+        width: var(--colW);
+        min-width: var(--colW);
+        position: relative;
+        border-right: 1px solid var(--line);
+        background-image: repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(var(--rowH) - 1px),
+          var(--line) calc(var(--rowH) - 1px),
+          var(--line) var(--rowH)
+        );
+      }
+      .wk-cell {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(120, 140, 180, 0.06);
+        pointer-events: none;
+      }
+      .over {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(217, 74, 74, 0.1);
+        border-top: 1px dashed rgba(217, 74, 74, 0.45);
+        pointer-events: none;
+      }
+      .today {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 0;
+        border-top: 2px solid rgba(217, 74, 74, 0.75);
+        pointer-events: none;
+        z-index: 2;
+      }
 
-.card{position:absolute;border-radius:8px;padding:5px 7px;overflow:hidden;cursor:grab;border:1px solid;
-  box-shadow:0 1px 2px rgba(20,30,60,.10);font-size:11px;line-height:1.25;z-index:3;user-select:none}
-.card:active{cursor:grabbing}
-.card.task{background:#e9f0ff;border-color:#a8bdf0}
-.card.vac{background:#ffe7a6;border-color:#e0bb4a}
-.card.sick{background:#ffd3d3;border-color:#e08a8a}
-.card .c-num{font-weight:700;font-size:11px}
-.card .c-txt{color:#3a4254;margin-top:1px}
-.card .c-dur{position:absolute;right:6px;bottom:3px;font-size:10px;opacity:.8}
-.card.dragging{opacity:.4}
-.person-col.drop{background-color:rgba(59,110,246,.06)}
+      .card {
+        position: absolute;
+        border-radius: 8px;
+        padding: 5px 7px;
+        overflow: hidden;
+        cursor: grab;
+        border: 1px solid;
+        box-shadow: 0 1px 2px rgba(20, 30, 60, 0.1);
+        font-size: 11px;
+        line-height: 1.25;
+        z-index: 3;
+        user-select: none;
+      }
+      .card:active {
+        cursor: grabbing;
+      }
+      .card.task {
+        background: #e9f0ff;
+        border-color: #a8bdf0;
+      }
+      .card.vac {
+        background: #ffe7a6;
+        border-color: #e0bb4a;
+      }
+      .card.sick {
+        background: #ffd3d3;
+        border-color: #e08a8a;
+      }
+      .card .c-num {
+        font-weight: 700;
+        font-size: 11px;
+      }
+      .card .c-txt {
+        color: #3a4254;
+        margin-top: 1px;
+      }
+      .card .c-dur {
+        position: absolute;
+        right: 6px;
+        bottom: 3px;
+        font-size: 10px;
+        opacity: 0.8;
+      }
+      .card.dragging {
+        opacity: 0.4;
+      }
+      .person-col.drop {
+        background-color: rgba(59, 110, 246, 0.06);
+      }
 
-/* empty states */
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;height:100%;color:var(--muted);text-align:center;padding:30px}
-.empty h2{color:var(--ink);margin:0;font-size:18px}
-.empty p{margin:0;max-width:440px}
+      /* empty states */
+      .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        height: 100%;
+        color: var(--muted);
+        text-align: center;
+        padding: 30px;
+      }
+      .empty h2 {
+        color: var(--ink);
+        margin: 0;
+        font-size: 18px;
+      }
+      .empty p {
+        margin: 0;
+        max-width: 440px;
+      }
 
-/* modal */
-.modal-back{position:fixed;inset:0;background:rgba(20,26,40,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
-.modal-back.open{display:flex}
-.modal{background:#fff;border-radius:12px;width:420px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(10,20,50,.35);overflow:hidden}
-.modal-h{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700}
-.modal-h .x{margin-left:auto}
-.modal-b{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto}
-.modal-f{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:#fafbfe}
-.spacer{flex:1}
-label.field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
-label.field input,label.field select{font:inherit;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;color:var(--ink);background:#fff}
-label.field input:focus,label.field select:focus{outline:2px solid rgba(59,110,246,.25);border-color:var(--accent)}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.err{color:var(--danger);font-size:12px;min-height:15px}
-.hint{font-size:11px;color:var(--muted)}
+      /* modal */
+      .modal-back {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 26, 40, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        padding: 20px;
+      }
+      .modal-back.open {
+        display: flex;
+      }
+      .modal {
+        background: #fff;
+        border-radius: 12px;
+        width: 420px;
+        max-width: 100%;
+        max-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 18px 50px rgba(10, 20, 50, 0.35);
+        overflow: hidden;
+      }
+      .modal-h {
+        display: flex;
+        align-items: center;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        font-weight: 700;
+      }
+      .modal-h .x {
+        margin-left: auto;
+      }
+      .modal-b {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: auto;
+      }
+      .modal-f {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--line);
+        background: #fafbfe;
+      }
+      .spacer {
+        flex: 1;
+      }
+      label.field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      label.field input,
+      label.field select {
+        font: inherit;
+        padding: 8px 10px;
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        color: var(--ink);
+        background: #fff;
+      }
+      label.field input:focus,
+      label.field select:focus {
+        outline: 2px solid rgba(59, 110, 246, 0.25);
+        border-color: var(--accent);
+      }
+      .row2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .err {
+        color: var(--danger);
+        font-size: 12px;
+        min-height: 15px;
+      }
+      .hint {
+        font-size: 11px;
+        color: var(--muted);
+      }
 
-/* people list */
-.plist{display:flex;flex-direction:column;gap:8px}
-.prow{display:flex;align-items:center;gap:8px}
-.prow input[type=text]{flex:1;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;font:inherit}
-.prow input[type=color]{width:34px;height:34px;border:1px solid var(--line2);border-radius:8px;padding:2px;background:#fff;cursor:pointer}
-.pdot{width:10px;height:10px;border-radius:50%;flex:none}
+      /* people list */
+      .plist {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .bklist {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 340px;
+        overflow: auto;
+      }
+      .bkrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+      }
+      .bkrow:hover {
+        background: #f6f8fc;
+      }
+      .bkrow .bk-when {
+        font-weight: 600;
+        min-width: 150px;
+      }
+      .bkrow .bk-meta {
+        color: var(--muted);
+        flex: 1;
+      }
+      .bkrow .bk-cur {
+        color: #1d7a4d;
+        font-size: 11px;
+        border: 1px solid #b6e0c9;
+        border-radius: 20px;
+        padding: 2px 8px;
+      }
+      .prow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .prow input[type="text"] {
+        flex: 1;
+        padding: 8px 10px;
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        font: inherit;
+      }
+      .prow input[type="color"] {
+        width: 34px;
+        height: 34px;
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        padding: 2px;
+        background: #fff;
+        cursor: pointer;
+      }
+      .pdot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex: none;
+      }
 
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1c2230;color:#fff;padding:10px 16px;
-  border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:80}
-.toast.show{opacity:1;bottom:30px}
-</style>
-</head>
-<body>
-
-<div class="topbar">
-  <div class="brand"><span class="dot"></span>Планировщик загрузки команды</div>
-  <div class="actions">
-    <span id="storeStatus" class="store" title="Где хранятся данные">проверка…</span>
-    <button id="btnPeople">Сотрудники</button>
-    <button id="btnAddTask" class="primary">+ Задача</button>
-    <button id="btnExport">Экспорт</button>
-    <button id="btnImport">Импорт</button>
-    <input type="file" id="fileImport" accept="application/json,.json" hidden>
-  </div>
-</div>
-
-<nav class="tabs" id="tabs"></nav>
-
-<main class="board" id="board"></main>
-
-<!-- Модалка: релиз -->
-<div class="modal-back" id="mRelease">
-  <div class="modal">
-    <div class="modal-h"><span id="relTitle">Новый релиз</span><button class="ghost x" data-close>✕</button></div>
-    <div class="modal-b">
-      <label class="field">Номер релиза
-        <input type="text" id="rNum" placeholder="например, 3.14">
-      </label>
-      <div class="row2">
-        <label class="field">Дата начала
-          <input type="date" id="rStart">
-        </label>
-        <label class="field">Дата окончания
-          <input type="date" id="rEnd">
-        </label>
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        background: #1c2230;
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.25s;
+        z-index: 80;
+      }
+      .toast.show {
+        opacity: 1;
+        bottom: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="brand">
+        <span class="dot"></span>Планировщик загрузки команды
       </div>
-      <div class="hint">Строки таблицы будут построены по всем дням от начала до окончания включительно.</div>
-      <div class="err" id="rErr"></div>
-    </div>
-    <div class="modal-f">
-      <button class="danger" id="rDelete" style="display:none">Удалить релиз</button>
-      <span class="spacer"></span>
-      <button data-close>Отмена</button>
-      <button class="primary" id="rSave">Подтвердить</button>
-    </div>
-  </div>
-</div>
-
-<!-- Модалка: задача -->
-<div class="modal-back" id="mTask">
-  <div class="modal">
-    <div class="modal-h"><span id="taskTitle">Новая задача</span><button class="ghost x" data-close>✕</button></div>
-    <div class="modal-b">
-      <label class="field">Исполнитель
-        <select id="tPerson"></select>
-      </label>
-      <div class="row2">
-        <label class="field">Дата начала работы
-          <input type="date" id="tStart">
-        </label>
-        <label class="field">Время на задачу, дней
-          <input type="number" id="tDays" step="0.5" min="0.5" value="1">
-        </label>
+      <div class="actions">
+        <span id="storeStatus" class="store" title="Где хранятся данные"
+          >проверка…</span
+        >
+        <button id="btnPeople">Сотрудники</button>
+        <button id="btnAddTask" class="primary">+ Задача</button>
+        <button id="btnExport">Экспорт</button>
+        <button id="btnImport">Импорт</button>
+        <button id="btnBackups">Версии</button>
+        <input
+          type="file"
+          id="fileImport"
+          accept="application/json,.json"
+          hidden
+        />
       </div>
-      <div class="row2">
-        <label class="field">Тип
-          <select id="tType">
-            <option value="task">Задача</option>
-            <option value="vacation">Отпуск</option>
-            <option value="sick">Больничный</option>
-          </select>
-        </label>
-        <label class="field">Номер задачи
-          <input type="text" id="tNum" placeholder="SPEKTR-1234">
-        </label>
+    </div>
+
+    <nav class="tabs" id="tabs"></nav>
+
+    <main class="board" id="board"></main>
+
+    <!-- Модалка: релиз -->
+    <div class="modal-back" id="mRelease">
+      <div class="modal">
+        <div class="modal-h">
+          <span id="relTitle">Новый релиз</span
+          ><button class="ghost x" data-close>✕</button>
+        </div>
+        <div class="modal-b">
+          <label class="field"
+            >Номер релиза
+            <input type="text" id="rNum" placeholder="например, 3.14" />
+          </label>
+          <div class="row2">
+            <label class="field"
+              >Дата начала
+              <input type="date" id="rStart" />
+            </label>
+            <label class="field"
+              >Дата окончания
+              <input type="date" id="rEnd" />
+            </label>
+          </div>
+          <div class="hint">
+            Строки таблицы будут построены по всем дням от начала до окончания
+            включительно.
+          </div>
+          <div class="err" id="rErr"></div>
+        </div>
+        <div class="modal-f">
+          <button class="danger" id="rDelete" style="display: none">
+            Удалить релиз
+          </button>
+          <span class="spacer"></span>
+          <button data-close>Отмена</button>
+          <button class="primary" id="rSave">Подтвердить</button>
+        </div>
       </div>
-      <label class="field">Описание
-        <input type="text" id="tDesc" placeholder="Краткое описание работы">
-      </label>
-      <div class="hint">0.5 — половина дня, 2 — два дня. Плашка растянется по дням выбранного человека.</div>
-      <div class="err" id="tErr"></div>
     </div>
-    <div class="modal-f">
-      <button class="danger" id="tDelete" style="display:none">Удалить</button>
-      <span class="spacer"></span>
-      <button data-close>Отмена</button>
-      <button class="primary" id="tSave">Добавить</button>
+
+    <!-- Модалка: задача -->
+    <div class="modal-back" id="mTask">
+      <div class="modal">
+        <div class="modal-h">
+          <span id="taskTitle">Новая задача</span
+          ><button class="ghost x" data-close>✕</button>
+        </div>
+        <div class="modal-b">
+          <label class="field"
+            >Исполнитель
+            <select id="tPerson"></select>
+          </label>
+          <div class="row2">
+            <label class="field"
+              >Дата начала работы
+              <input type="date" id="tStart" />
+            </label>
+            <label class="field"
+              >Время на задачу, дней
+              <input type="number" id="tDays" step="0.5" min="0.5" value="1" />
+            </label>
+          </div>
+          <div class="row2">
+            <label class="field"
+              >Тип
+              <select id="tType">
+                <option value="task">Задача</option>
+                <option value="vacation">Отпуск</option>
+                <option value="sick">Больничный</option>
+              </select>
+            </label>
+            <label class="field"
+              >Номер задачи
+              <input type="text" id="tNum" placeholder="SPEKTR-1234" />
+            </label>
+          </div>
+          <label class="field"
+            >Описание
+            <input
+              type="text"
+              id="tDesc"
+              placeholder="Краткое описание работы"
+            />
+          </label>
+          <div class="hint">
+            0.5 — половина дня, 2 — два дня. Плашка растянется по дням
+            выбранного человека.
+          </div>
+          <div class="err" id="tErr"></div>
+        </div>
+        <div class="modal-f">
+          <button class="danger" id="tDelete" style="display: none">
+            Удалить
+          </button>
+          <span class="spacer"></span>
+          <button data-close>Отмена</button>
+          <button class="primary" id="tSave">Добавить</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<!-- Модалка: сотрудники -->
-<div class="modal-back" id="mPeople">
-  <div class="modal">
-    <div class="modal-h">Сотрудники отдела<button class="ghost x" data-close>✕</button></div>
-    <div class="modal-b">
-      <div class="plist" id="plist"></div>
-      <button id="pAdd">+ Добавить сотрудника</button>
-      <div class="hint">Порядок сотрудников = порядок столбцов. Изменения сохраняются сразу.</div>
+    <!-- Модалка: сотрудники -->
+    <div class="modal-back" id="mPeople">
+      <div class="modal">
+        <div class="modal-h">
+          Сотрудники отдела<button class="ghost x" data-close>✕</button>
+        </div>
+        <div class="modal-b">
+          <div class="plist" id="plist"></div>
+          <button id="pAdd">+ Добавить сотрудника</button>
+          <div class="hint">
+            Порядок сотрудников = порядок столбцов. Изменения сохраняются сразу.
+          </div>
+        </div>
+        <div class="modal-f">
+          <span class="spacer"></span
+          ><button class="primary" data-close>Готово</button>
+        </div>
+      </div>
     </div>
-    <div class="modal-f"><span class="spacer"></span><button class="primary" data-close>Готово</button></div>
-  </div>
-</div>
 
-<div class="toast" id="toast"></div>
+    <!-- Модалка: версии (автобэкапы) -->
+    <div class="modal-back" id="mBackups">
+      <div class="modal">
+        <div class="modal-h">
+          Версии данных<button class="ghost x" data-close>✕</button>
+        </div>
+        <div class="modal-b">
+          <div class="hint" id="bkHint">Загрузка…</div>
+          <div class="bklist" id="bklist"></div>
+        </div>
+        <div class="modal-f">
+          <span class="spacer"></span
+          ><button class="primary" data-close>Закрыть</button>
+        </div>
+      </div>
+    </div>
 
-<script>
-/* ============ константы и утилиты ============ */
-const ROW_H = 46, COL_W = 190;
-const WD = ['вс','пн','вт','ср','чт','пт','сб'];
-const PALETTE = ['#9db8f5','#b3a3f0','#8fcfd4','#f0b58f','#a8dcb5','#e0a8d8','#e8d488','#a3d8cf','#c2c8d4','#e8a3a3','#8fc0f0','#d8b0f0'];
-const $ = s => document.querySelector(s);
-const uid = () => Math.random().toString(36).slice(2,10);
+    <div class="toast" id="toast"></div>
 
-function iso(d){ return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
-function todayISO(){ return iso(new Date()); }
-function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-function addDays(s,n){ const d=parseISO(s); d.setDate(d.getDate()+n); return iso(d); }
-function diffDays(a,b){ return Math.round((parseISO(b)-parseISO(a))/86400000); }
-function fmt(s){ const d=parseISO(s); return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0'); }
-function eachDay(a,b){ const out=[]; let n=diffDays(a,b); for(let i=0;i<=n;i++) out.push(addDays(a,i)); return out; }
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function round(n){ return Math.round(n*100)/100; }
-function fmtDur(n){ return round(n)+' дн'; }
-function rgba(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900); }
+    <script>
+      /* ============ константы и утилиты ============ */
+      const ROW_H = 46,
+        COL_W = 190;
+      const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+      const PALETTE = [
+        "#9db8f5",
+        "#b3a3f0",
+        "#8fcfd4",
+        "#f0b58f",
+        "#a8dcb5",
+        "#e0a8d8",
+        "#e8d488",
+        "#a3d8cf",
+        "#c2c8d4",
+        "#e8a3a3",
+        "#8fc0f0",
+        "#d8b0f0",
+      ];
+      const $ = (s) => document.querySelector(s);
+      const uid = () => Math.random().toString(36).slice(2, 10);
 
-/* ============ состояние и хранение ============ */
-const KEY = 'team-planner-v1';
-let state = { people:[], releases:[], tasks:[], activeId:null };
-let backend = null;        // 'server' | 'browser'
-let writeTimer = null;
-let saving = false, dirtyWhileSaving = false;
+      function iso(d) {
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 10);
+      }
+      function todayISO() {
+        return iso(new Date());
+      }
+      function parseISO(s) {
+        const [y, m, d] = s.split("-").map(Number);
+        return new Date(y, m - 1, d);
+      }
+      function addDays(s, n) {
+        const d = parseISO(s);
+        d.setDate(d.getDate() + n);
+        return iso(d);
+      }
+      function diffDays(a, b) {
+        return Math.round((parseISO(b) - parseISO(a)) / 86400000);
+      }
+      function fmt(s) {
+        const d = parseISO(s);
+        return (
+          String(d.getDate()).padStart(2, "0") +
+          "." +
+          String(d.getMonth() + 1).padStart(2, "0")
+        );
+      }
+      function eachDay(a, b) {
+        const out = [];
+        let n = diffDays(a, b);
+        for (let i = 0; i <= n; i++) out.push(addDays(a, i));
+        return out;
+      }
+      function esc(s) {
+        return String(s == null ? "" : s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+      function round(n) {
+        return Math.round(n * 100) / 100;
+      }
+      function fmtDur(n) {
+        return round(n) + " дн";
+      }
+      function rgba(hex, a) {
+        const h = hex.replace("#", "");
+        const r = parseInt(h.slice(0, 2), 16),
+          g = parseInt(h.slice(2, 4), 16),
+          b = parseInt(h.slice(4, 6), 16);
+        return `rgba(${r},${g},${b},${a})`;
+      }
+      function toast(msg) {
+        const t = $("#toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(t._t);
+        t._t = setTimeout(() => t.classList.remove("show"), 1900);
+      }
 
-function valid(s){ return s && Array.isArray(s.people) && Array.isArray(s.releases) && Array.isArray(s.tasks); }
+      /* ============ состояние и хранение ============ */
+      const KEY = "team-planner-v1";
+      let state = { people: [], releases: [], tasks: [], activeId: null };
+      let backend = null; // 'server' | 'browser'
+      let writeTimer = null;
+      let saving = false,
+        dirtyWhileSaving = false;
 
-/* Статус места хранения в шапке */
-function setStatus(mode, text){
-  const el = document.getElementById('storeStatus');
-  if(!el) return;
-  el.className = 'store ' + (mode==='server' ? 'on' : mode==='browser' ? 'off' : '');
-  el.innerHTML = '<span class="sdot"></span>' + text;
-}
+      function valid(s) {
+        return (
+          s &&
+          Array.isArray(s.people) &&
+          Array.isArray(s.releases) &&
+          Array.isArray(s.tasks)
+        );
+      }
 
-function markDirty(){
-  clearTimeout(writeTimer);
-  writeTimer = setTimeout(persist, 500);
-}
+      /* Статус места хранения в шапке */
+      function setStatus(mode, text) {
+        const el = document.getElementById("storeStatus");
+        if (!el) return;
+        el.className =
+          "store " +
+          (mode === "server" ? "on" : mode === "browser" ? "off" : "");
+        el.innerHTML = '<span class="sdot"></span>' + text;
+      }
 
-function persist(){
-  if(backend === 'server') persistServer();
-  else if(backend === 'browser') persistBrowser();
-}
+      function markDirty() {
+        clearTimeout(writeTimer);
+        writeTimer = setTimeout(persist, 500);
+      }
 
-function persistServer(){
-  if(saving){ dirtyWhileSaving = true; return; }
-  saving = true;
-  fetch('/api/data', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(state)
-  }).then(r => r.ok ? r.json() : Promise.reject(r))
-    .then(()=>{ setStatus('server','Сохранено в data.json'); })
-    .catch(()=>{ setStatus('','Не удалось сохранить — проверьте, запущен ли сервер'); })
-    .finally(()=>{
-      saving = false;
-      if(dirtyWhileSaving){ dirtyWhileSaving = false; persistServer(); }
-    });
-}
+      function persist() {
+        if (backend === "server") persistServer();
+        else if (backend === "browser") persistBrowser();
+      }
 
-function persistBrowser(){
-  try{ localStorage.setItem(KEY, JSON.stringify(state)); setStatus('browser','Хранение: в браузере (сервер не найден)'); }
-  catch(e){ setStatus('','Не удалось сохранить в браузере'); }
-}
+      function persistServer() {
+        if (saving) {
+          dirtyWhileSaving = true;
+          return;
+        }
+        saving = true;
+        fetch("/api/data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(state),
+        })
+          .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+          .then(() => {
+            setStatus("server", "Сохранено в data.json");
+          })
+          .catch(() => {
+            setStatus(
+              "",
+              "Не удалось сохранить — проверьте, запущен ли сервер",
+            );
+          })
+          .finally(() => {
+            saving = false;
+            if (dirtyWhileSaving) {
+              dirtyWhileSaving = false;
+              persistServer();
+            }
+          });
+      }
 
-async function initStorage(){
-  setStatus('', 'проверка…');
-  let initial = null;
-  try{
-    const r = await fetch('/api/data', { cache:'no-store' });
-    if(r.ok){
-      backend = 'server';
-      const j = await r.json();
-      initial = valid(j.data) ? j.data : null;
-    }
-  }catch(e){ backend = null; }
-
-  if(!backend){                       // сервер недоступен — работаем локально
-    backend = 'browser';
-    try{ const raw = localStorage.getItem(KEY); if(raw){ const s = JSON.parse(raw); if(valid(s)) initial = s; } }catch(e){}
-  }
-
-  if(initial) state = initial;
-
-  // предупредить, если в файле и в браузере разные данные
-  try{
-    const raw = localStorage.getItem(KEY);
-    if(raw){
-      const local = JSON.parse(raw);
-      if(valid(local)){
-        if(!initial){
-          state = local;                      // файла нет — берём из браузера
-        } else if(JSON.stringify(local.tasks) !== JSON.stringify(initial.tasks) && local.tasks.length){
-          pendingLocal = local;               // разные — спросим после отрисовки
+      function persistBrowser() {
+        try {
+          localStorage.setItem(KEY, JSON.stringify(state));
+          setStatus("browser", "Хранение: в браузере (сервер не найден)");
+        } catch (e) {
+          setStatus("", "Не удалось сохранить в браузере");
         }
       }
-    }
-  }catch(e){}
 
-  if(backend === 'server') setStatus('server','Сохранено в data.json');
-  else setStatus('browser','Хранение: в браузере (сервер не найден)');
-}
+      async function initStorage() {
+        setStatus("", "проверка…");
+        let initial = null;
+        try {
+          const r = await fetch("/api/data", { cache: "no-store" });
+          if (r.ok) {
+            backend = "server";
+            const j = await r.json();
+            initial = valid(j.data) ? j.data : null;
+          }
+        } catch (e) {
+          backend = null;
+        }
 
-let pendingLocal = null;
+        if (!backend) {
+          // сервер недоступен — работаем локально
+          backend = "browser";
+          try {
+            const raw = localStorage.getItem(KEY);
+            if (raw) {
+              const s = JSON.parse(raw);
+              if (valid(s)) initial = s;
+            }
+          } catch (e) {}
+        }
 
-function activeRelease(){ return state.releases.find(r=>r.id===state.activeId) || null; }
-function save(){ markDirty(); }
-function tasksOf(personId, releaseId){ return state.tasks.filter(t=>t.personId===personId && t.releaseId===releaseId); }
-function loadAt(personId, rel, dayIdx){
-  let sum=0;
-  tasksOf(personId, rel.id).forEach(t=>{
-    const s=diffDays(rel.start,t.start), e=s+t.days;
-    const ov=Math.max(0, Math.min(e, dayIdx+1) - Math.max(s, dayIdx));
-    sum+=ov;
-  });
-  return sum;
-}
+        if (initial) state = initial;
 
-/* ============ вкладки релизов ============ */
-function renderTabs(){
-  const el=$('#tabs'); let h='';
-  state.releases.forEach(r=>{
-    const active = r.id===state.activeId ? ' active' : '';
-    h += `<div class="tab${active}" data-rel="${r.id}">
-      <span class="tnum">Релиз ${esc(r.number||'—')}</span>
+        // предупредить, если в файле и в браузере разные данные
+        try {
+          const raw = localStorage.getItem(KEY);
+          if (raw) {
+            const local = JSON.parse(raw);
+            if (valid(local)) {
+              if (!initial) {
+                state = local; // файла нет — берём из браузера
+              } else if (
+                JSON.stringify(local.tasks) !== JSON.stringify(initial.tasks) &&
+                local.tasks.length
+              ) {
+                pendingLocal = local; // разные — спросим после отрисовки
+              }
+            }
+          }
+        } catch (e) {}
+
+        if (backend === "server") setStatus("server", "Сохранено в data.json");
+        else setStatus("browser", "Хранение: в браузере (сервер не найден)");
+      }
+
+      let pendingLocal = null;
+
+      function activeRelease() {
+        return state.releases.find((r) => r.id === state.activeId) || null;
+      }
+      function save() {
+        markDirty();
+      }
+      function tasksOf(personId, releaseId) {
+        return state.tasks.filter(
+          (t) => t.personId === personId && t.releaseId === releaseId,
+        );
+      }
+      function loadAt(personId, rel, dayIdx) {
+        let sum = 0;
+        tasksOf(personId, rel.id).forEach((t) => {
+          const s = diffDays(rel.start, t.start),
+            e = s + t.days;
+          const ov = Math.max(0, Math.min(e, dayIdx + 1) - Math.max(s, dayIdx));
+          sum += ov;
+        });
+        return sum;
+      }
+
+      /* ============ вкладки релизов ============ */
+      function renderTabs() {
+        const el = $("#tabs");
+        let h = "";
+        state.releases.forEach((r) => {
+          const active = r.id === state.activeId ? " active" : "";
+          h += `<div class="tab${active}" data-rel="${r.id}">
+      <span class="tnum">Релиз ${esc(r.number || "—")}</span>
       <span class="tdate">${fmt(r.start)} – ${fmt(r.end)}</span>
       <span class="edit" data-edit="${r.id}" title="Изменить">✎</span>
       <span class="x" data-del="${r.id}" title="Удалить">✕</span>
     </div>`;
-  });
-  h += `<div class="addtab" id="addRelease" title="Новый релиз">+ Релиз</div>`;
-  el.innerHTML = h;
+        });
+        h += `<div class="addtab" id="addRelease" title="Новый релиз">+ Релиз</div>`;
+        el.innerHTML = h;
 
-  el.querySelectorAll('.tab').forEach(tab=>{
-    tab.addEventListener('click', e=>{
-      if(e.target.dataset.del){ e.stopPropagation(); deleteRelease(e.target.dataset.del); return; }
-      if(e.target.dataset.edit){ e.stopPropagation(); openRelease(e.target.dataset.edit); return; }
-      state.activeId = tab.dataset.rel; save(); render();
-    });
-  });
-  $('#addRelease').addEventListener('click', ()=>openRelease(null));
-}
+        el.querySelectorAll(".tab").forEach((tab) => {
+          tab.addEventListener("click", (e) => {
+            if (e.target.dataset.del) {
+              e.stopPropagation();
+              deleteRelease(e.target.dataset.del);
+              return;
+            }
+            if (e.target.dataset.edit) {
+              e.stopPropagation();
+              openRelease(e.target.dataset.edit);
+              return;
+            }
+            state.activeId = tab.dataset.rel;
+            save();
+            render();
+          });
+        });
+        $("#addRelease").addEventListener("click", () => openRelease(null));
+      }
 
-/* ============ доска ============ */
-function renderBoard(){
-  const board=$('#board');
-  const rel=activeRelease();
+      /* ============ доска ============ */
+      function renderBoard() {
+        const board = $("#board");
+        const rel = activeRelease();
 
-  if(!state.people.length){
-    board.innerHTML = `<div class="empty">
+        if (!state.people.length) {
+          board.innerHTML = `<div class="empty">
       <h2>Шаг 1. Заведите сотрудников</h2>
       <p>Добавьте людей отдела — они станут столбцами таблицы. Позже можно добавлять и удалять.</p>
       <div style="display:flex;gap:10px">
         <button class="primary" id="ePeople">Добавить сотрудников</button>
         <button id="eDemo">Загрузить демо</button>
       </div></div>`;
-    $('#ePeople').onclick = openPeople;
-    $('#eDemo').onclick = loadDemo;
-    return;
-  }
-  if(!rel){
-    board.innerHTML = `<div class="empty">
+          $("#ePeople").onclick = openPeople;
+          $("#eDemo").onclick = loadDemo;
+          return;
+        }
+        if (!rel) {
+          board.innerHTML = `<div class="empty">
       <h2>Шаг 2. Заведите релиз</h2>
       <p>Нажмите «+ Релиз» на панели вкладок выше, укажите номер и даты начала и окончания.</p>
       <button class="primary" id="eRel">+ Новый релиз</button></div>`;
-    $('#eRel').onclick = ()=>openRelease(null);
-    return;
-  }
+          $("#eRel").onclick = () => openRelease(null);
+          return;
+        }
 
-  const days = eachDay(rel.start, rel.end);
+        const days = eachDay(rel.start, rel.end);
 
-  /* левая колонка с датами */
-  let left = `<div class="corner">Даты</div><div class="dates">`;
-  days.forEach((d,i)=>{
-    const wk = [0,6].includes(parseISO(d).getDay()) ? ' wk' : '';
-    left += `<div class="date-cell${wk}"><span class="dnum">${i+1}</span><span class="ddate">${fmt(d)}, ${WD[parseISO(d).getDay()]}</span></div>`;
-  });
-  left += `</div>`;
+        /* левая колонка с датами */
+        let left = `<div class="corner">Даты</div><div class="dates">`;
+        days.forEach((d, i) => {
+          const wk = [0, 6].includes(parseISO(d).getDay()) ? " wk" : "";
+          left += `<div class="date-cell${wk}"><span class="dnum">${i + 1}</span><span class="ddate">${fmt(d)}, ${WD[parseISO(d).getDay()]}</span></div>`;
+        });
+        left += `</div>`;
 
-  /* шапка с людьми */
-  let heads = `<div class="heads">`;
-  state.people.forEach(p=>{
-    const total = tasksOf(p.id, rel.id).reduce((a,t)=>a+t.days,0);
-    heads += `<div class="head" style="border-top:3px solid ${p.color}">
-      <div class="pname">${esc(p.name||'Без имени')}</div>
+        /* шапка с людьми */
+        let heads = `<div class="heads">`;
+        state.people.forEach((p) => {
+          const total = tasksOf(p.id, rel.id).reduce((a, t) => a + t.days, 0);
+          heads += `<div class="head" style="border-top:3px solid ${p.color}">
+      <div class="pname">${esc(p.name || "Без имени")}</div>
       <div class="psum">Σ ${fmtDur(total)}</div></div>`;
-  });
-  heads += `</div>`;
+        });
+        heads += `</div>`;
 
-  /* тела столбцов */
-  let bodies = `<div class="bodies">`;
-  state.people.forEach(p=>{
-    let inner='';
-    days.forEach((d,i)=>{
-      if([0,6].includes(parseISO(d).getDay()))
-        inner += `<div class="wk-cell" style="top:${i*ROW_H}px;height:${ROW_H}px"></div>`;
-    });
-    const ti = diffDays(rel.start, todayISO());
-    if(ti>=0 && ti<days.length) inner += `<div class="today" style="top:${ti*ROW_H}px"></div>`;
-    days.forEach((d,i)=>{
-      const load=loadAt(p.id, rel, i);
-      if(load>1.001) inner += `<div class="over" style="top:${i*ROW_H}px;height:${ROW_H}px" title="Перегрузка: ${round(load)} дн в этот день"></div>`;
-    });
+        /* тела столбцов */
+        let bodies = `<div class="bodies">`;
+        state.people.forEach((p) => {
+          let inner = "";
+          days.forEach((d, i) => {
+            if ([0, 6].includes(parseISO(d).getDay()))
+              inner += `<div class="wk-cell" style="top:${i * ROW_H}px;height:${ROW_H}px"></div>`;
+          });
+          const ti = diffDays(rel.start, todayISO());
+          if (ti >= 0 && ti < days.length)
+            inner += `<div class="today" style="top:${ti * ROW_H}px"></div>`;
+          days.forEach((d, i) => {
+            const load = loadAt(p.id, rel, i);
+            if (load > 1.001)
+              inner += `<div class="over" style="top:${i * ROW_H}px;height:${ROW_H}px" title="Перегрузка: ${round(load)} дн в этот день"></div>`;
+          });
 
-    // дорожки для пересекающихся задач
-    const items = tasksOf(p.id, rel.id).map(t=>{
-      const s=diffDays(rel.start,t.start);
-      return { t, s, e:s+t.days };
-    }).sort((a,b)=> a.s-b.s || a.e-b.e);
-    const lanes=[];
-    items.forEach(it=>{
-      let li=lanes.findIndex(end=>end<=it.s+1e-6);
-      if(li<0){ lanes.push(it.e); li=lanes.length-1; } else lanes[li]=it.e;
-      it.lane=li;
-    });
-    const lc=Math.max(1,lanes.length);
-    const laneW=COL_W/lc;
-    items.forEach(it=>{
-      const left=it.lane*laneW+3, w=laneW-6;
-      const top=it.s*ROW_H+2;
-      const h=Math.max(18, (it.e-it.s)*ROW_H-4);
-      inner += cardHTML(it.t, p, left, w, top, h);
-    });
+          // дорожки для пересекающихся задач
+          const items = tasksOf(p.id, rel.id)
+            .map((t) => {
+              const s = diffDays(rel.start, t.start);
+              return { t, s, e: s + t.days };
+            })
+            .sort((a, b) => a.s - b.s || a.e - b.e);
+          const lanes = [];
+          items.forEach((it) => {
+            let li = lanes.findIndex((end) => end <= it.s + 1e-6);
+            if (li < 0) {
+              lanes.push(it.e);
+              li = lanes.length - 1;
+            } else lanes[li] = it.e;
+            it.lane = li;
+          });
+          const lc = Math.max(1, lanes.length);
+          const laneW = COL_W / lc;
+          items.forEach((it) => {
+            const left = it.lane * laneW + 3,
+              w = laneW - 6;
+            const top = it.s * ROW_H + 2;
+            const h = Math.max(18, (it.e - it.s) * ROW_H - 4);
+            inner += cardHTML(it.t, p, left, w, top, h);
+          });
 
-    bodies += `<div class="person-col" data-person="${p.id}">${inner}</div>`;
-  });
-  bodies += `</div>`;
+          bodies += `<div class="person-col" data-person="${p.id}">${inner}</div>`;
+        });
+        bodies += `</div>`;
 
-  board.innerHTML = `<div class="grid">
+        board.innerHTML = `<div class="grid">
     <div class="left">${left}</div>
     <div class="cols">${heads}${bodies}</div>
   </div>`;
 
-  bindCards();
-  bindDrop();
-}
+        bindCards();
+        bindDrop();
+      }
 
-function cardHTML(t,p,left,w,top,h){
-  const cls = t.type==='vacation'?'vac':(t.type==='sick'?'sick':'task');
-  const style = cls==='task' ? `background:${rgba(p.color,.22)};border-color:${p.color};` : '';
-  const head = t.type==='vacation'?'Отпуск':(t.type==='sick'?'Больничный':(t.number||'Задача'));
-  const sub = t.type==='task' ? (t.title||'') : (t.title||'');
-  return `<div class="card ${cls}" data-task="${t.id}" draggable="true"
+      function cardHTML(t, p, left, w, top, h) {
+        const cls =
+          t.type === "vacation" ? "vac" : t.type === "sick" ? "sick" : "task";
+        const style =
+          cls === "task"
+            ? `background:${rgba(p.color, 0.22)};border-color:${p.color};`
+            : "";
+        const head =
+          t.type === "vacation"
+            ? "Отпуск"
+            : t.type === "sick"
+              ? "Больничный"
+              : t.number || "Задача";
+        const sub = t.type === "task" ? t.title || "" : t.title || "";
+        return `<div class="card ${cls}" data-task="${t.id}" draggable="true"
       style="left:${left}px;width:${w}px;top:${top}px;height:${h}px;${style}">
     <div class="c-num">${esc(head)}</div>
-    ${sub?`<div class="c-txt">${esc(sub)}</div>`:''}
+    ${sub ? `<div class="c-txt">${esc(sub)}</div>` : ""}
     <div class="c-dur">${fmtDur(t.days)}</div>
   </div>`;
-}
+      }
 
-function bindCards(){
-  document.querySelectorAll('.card').forEach(c=>{
-    c.addEventListener('click', e=>{ if(c._moved) { c._moved=false; return; } openTask(c.dataset.task); });
-    c.addEventListener('dragstart', e=>{
-      e.dataTransfer.setData('text/plain', c.dataset.task);
-      e.dataTransfer.effectAllowed='move';
-      c.classList.add('dragging');
-      document.querySelectorAll('.person-col').forEach(pc=>pc.classList.add('drop'));
-    });
-    c.addEventListener('dragend', ()=>{
-      c.classList.remove('dragging');
-      document.querySelectorAll('.person-col').forEach(pc=>pc.classList.remove('drop'));
-    });
-  });
-}
+      function bindCards() {
+        document.querySelectorAll(".card").forEach((c) => {
+          c.addEventListener("click", (e) => {
+            if (c._moved) {
+              c._moved = false;
+              return;
+            }
+            openTask(c.dataset.task);
+          });
+          c.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", c.dataset.task);
+            e.dataTransfer.effectAllowed = "move";
+            c.classList.add("dragging");
+            document
+              .querySelectorAll(".person-col")
+              .forEach((pc) => pc.classList.add("drop"));
+          });
+          c.addEventListener("dragend", () => {
+            c.classList.remove("dragging");
+            document
+              .querySelectorAll(".person-col")
+              .forEach((pc) => pc.classList.remove("drop"));
+          });
+        });
+      }
 
-function bindDrop(){
-  const rel=activeRelease(); if(!rel) return;
-  const days=eachDay(rel.start,rel.end);
-  document.querySelectorAll('.person-col').forEach(col=>{
-    col.addEventListener('dragover', e=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
-    col.addEventListener('drop', e=>{
-      e.preventDefault();
-      const id=e.dataTransfer.getData('text/plain'); if(!id) return;
-      const t=state.tasks.find(x=>x.id===id); if(!t) return;
-      const rect=col.getBoundingClientRect();
-      let idx=Math.floor((e.clientY-rect.top)/ROW_H);
-      idx=Math.max(0, Math.min(days.length-1, idx));
-      const newStart=addDays(rel.start, idx);
-      const endIdx=diffDays(rel.start, newStart)+t.days;
-      if(endIdx>days.length) { toast('Не влезает в границы релиза'); return; }
-      t.personId=col.dataset.person;
-      t.start=newStart;
-      save(); render();
-    });
-  });
-}
+      function bindDrop() {
+        const rel = activeRelease();
+        if (!rel) return;
+        const days = eachDay(rel.start, rel.end);
+        document.querySelectorAll(".person-col").forEach((col) => {
+          col.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          });
+          col.addEventListener("drop", (e) => {
+            e.preventDefault();
+            const id = e.dataTransfer.getData("text/plain");
+            if (!id) return;
+            const t = state.tasks.find((x) => x.id === id);
+            if (!t) return;
+            const rect = col.getBoundingClientRect();
+            let idx = Math.floor((e.clientY - rect.top) / ROW_H);
+            idx = Math.max(0, Math.min(days.length - 1, idx));
+            const newStart = addDays(rel.start, idx);
+            const endIdx = diffDays(rel.start, newStart) + t.days;
+            if (endIdx > days.length) {
+              toast("Не влезает в границы релиза");
+              return;
+            }
+            t.personId = col.dataset.person;
+            t.start = newStart;
+            save();
+            render();
+          });
+        });
+      }
 
-/* ============ рендер целиком ============ */
-function render(){ renderTabs(); renderBoard(); }
+      /* ============ рендер целиком ============ */
+      function render() {
+        renderTabs();
+        renderBoard();
+      }
 
-/* ============ модалки ============ */
-function openModal(sel){ $(sel).classList.add('open'); }
-function closeModal(sel){ $(sel).classList.remove('open'); }
-document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', e=>{
-  e.target.closest('.modal-back').classList.remove('open');
-}));
-document.querySelectorAll('.modal-back').forEach(mb=>mb.addEventListener('mousedown', e=>{ if(e.target===mb) mb.classList.remove('open'); }));
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-back.open').forEach(m=>m.classList.remove('open')); });
+      /* ============ модалки ============ */
+      function openModal(sel) {
+        $(sel).classList.add("open");
+      }
+      function closeModal(sel) {
+        $(sel).classList.remove("open");
+      }
+      document.querySelectorAll("[data-close]").forEach((b) =>
+        b.addEventListener("click", (e) => {
+          e.target.closest(".modal-back").classList.remove("open");
+        }),
+      );
+      document.querySelectorAll(".modal-back").forEach((mb) =>
+        mb.addEventListener("mousedown", (e) => {
+          if (e.target === mb) mb.classList.remove("open");
+        }),
+      );
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape")
+          document
+            .querySelectorAll(".modal-back.open")
+            .forEach((m) => m.classList.remove("open"));
+      });
 
-/* --- релиз --- */
-let editingRel=null;
-function openRelease(id){
-  editingRel=id;
-  const rel = id ? state.releases.find(r=>r.id===id) : null;
-  $('#relTitle').textContent = rel ? 'Редактирование релиза' : 'Новый релиз';
-  $('#rNum').value = rel ? rel.number : nextRelNum();
-  const st = rel ? rel.start : todayISO();
-  $('#rStart').value = st;
-  $('#rEnd').value = rel ? rel.end : addDays(st, 9);
-  $('#rErr').textContent='';
-  $('#rDelete').style.display = rel ? '' : 'none';
-  openModal('#mRelease');
-  setTimeout(()=>$('#rNum').focus(),50);
-}
-function nextRelNum(){
-  if(!state.releases.length) return '1.0';
-  return '1.'+state.releases.length;
-}
-$('#rSave').addEventListener('click', ()=>{
-  const num=$('#rNum').value.trim();
-  const a=$('#rStart').value, b=$('#rEnd').value;
-  if(!num){ $('#rErr').textContent='Укажите номер релиза'; return; }
-  if(!a||!b){ $('#rErr').textContent='Укажите обе даты'; return; }
-  if(diffDays(a,b)<0){ $('#rErr').textContent='Дата окончания раньше даты начала'; return; }
-  if(diffDays(a,b)>366){ $('#rErr').textContent='Слишком длинный период (макс. 366 дней)'; return; }
-  if(editingRel){
-    const rel=state.releases.find(r=>r.id===editingRel);
-    rel.number=num; rel.start=a; rel.end=b;
-    toast('Релиз обновлён');
-  } else {
-    const rel={ id:uid(), number:num, start:a, end:b };
-    state.releases.push(rel); state.activeId=rel.id;
-    toast('Релиз создан');
-  }
-  save(); render(); closeModal('#mRelease');
-});
-$('#rDelete').addEventListener('click', ()=> deleteRelease(editingRel, true));
+      /* --- релиз --- */
+      let editingRel = null;
+      function openRelease(id) {
+        editingRel = id;
+        const rel = id ? state.releases.find((r) => r.id === id) : null;
+        $("#relTitle").textContent = rel
+          ? "Редактирование релиза"
+          : "Новый релиз";
+        $("#rNum").value = rel ? rel.number : nextRelNum();
+        const st = rel ? rel.start : todayISO();
+        $("#rStart").value = st;
+        $("#rEnd").value = rel ? rel.end : addDays(st, 9);
+        $("#rErr").textContent = "";
+        $("#rDelete").style.display = rel ? "" : "none";
+        openModal("#mRelease");
+        setTimeout(() => $("#rNum").focus(), 50);
+      }
+      function nextRelNum() {
+        if (!state.releases.length) return "1.0";
+        return "1." + state.releases.length;
+      }
+      $("#rSave").addEventListener("click", () => {
+        const num = $("#rNum").value.trim();
+        const a = $("#rStart").value,
+          b = $("#rEnd").value;
+        if (!num) {
+          $("#rErr").textContent = "Укажите номер релиза";
+          return;
+        }
+        if (!a || !b) {
+          $("#rErr").textContent = "Укажите обе даты";
+          return;
+        }
+        if (diffDays(a, b) < 0) {
+          $("#rErr").textContent = "Дата окончания раньше даты начала";
+          return;
+        }
+        if (diffDays(a, b) > 366) {
+          $("#rErr").textContent = "Слишком длинный период (макс. 366 дней)";
+          return;
+        }
+        if (editingRel) {
+          const rel = state.releases.find((r) => r.id === editingRel);
+          rel.number = num;
+          rel.start = a;
+          rel.end = b;
+          toast("Релиз обновлён");
+        } else {
+          const rel = { id: uid(), number: num, start: a, end: b };
+          state.releases.push(rel);
+          state.activeId = rel.id;
+          toast("Релиз создан");
+        }
+        save();
+        render();
+        closeModal("#mRelease");
+      });
+      $("#rDelete").addEventListener("click", () =>
+        deleteRelease(editingRel, true),
+      );
 
-function deleteRelease(id, fromModal){
-  const rel=state.releases.find(r=>r.id===id); if(!rel) return;
-  if(!confirm(`Удалить релиз ${rel.number} и все его задачи?`)) return;
-  state.releases=state.releases.filter(r=>r.id!==id);
-  state.tasks=state.tasks.filter(t=>t.releaseId!==id);
-  if(state.activeId===id) state.activeId = state.releases.length? state.releases[state.releases.length-1].id : null;
-  save(); render(); if(fromModal) closeModal('#mRelease');
-  toast('Релиз удалён');
-}
+      function deleteRelease(id, fromModal) {
+        const rel = state.releases.find((r) => r.id === id);
+        if (!rel) return;
+        if (!confirm(`Удалить релиз ${rel.number} и все его задачи?`)) return;
+        state.releases = state.releases.filter((r) => r.id !== id);
+        state.tasks = state.tasks.filter((t) => t.releaseId !== id);
+        if (state.activeId === id)
+          state.activeId = state.releases.length
+            ? state.releases[state.releases.length - 1].id
+            : null;
+        save();
+        render();
+        if (fromModal) closeModal("#mRelease");
+        toast("Релиз удалён");
+      }
 
-/* --- задача --- */
-let editingTask=null;
-function openTask(id){
-  const rel=activeRelease();
-  if(!rel){ toast('Сначала создайте релиз'); return; }
-  if(!state.people.length){ toast('Сначала заведите сотрудников'); return; }
-  editingTask=id||null;
-  const t = id ? state.tasks.find(x=>x.id===id) : null;
-  $('#taskTitle').textContent = t ? 'Редактирование задачи' : 'Новая задача';
-  $('#tPerson').innerHTML = state.people.map(p=>`<option value="${p.id}">${esc(p.name||'Без имени')}</option>`).join('');
-  $('#tPerson').value = t ? t.personId : state.people[0].id;
-  $('#tStart').min = rel.start; $('#tStart').max = rel.end;
-  $('#tStart').value = t ? t.start : rel.start;
-  $('#tDays').value = t ? t.days : 1;
-  $('#tType').value = t ? (t.type||'task') : 'task';
-  $('#tNum').value = t ? (t.number||'') : '';
-  $('#tDesc').value = t ? (t.title||'') : '';
-  $('#tErr').textContent='';
-  $('#tDelete').style.display = t ? '' : 'none';
-  $('#tSave').textContent = t ? 'Подтвердить' : 'Добавить';
-  openModal('#mTask');
-  setTimeout(()=>$('#tDays').focus(),50);
-}
-$('#tSave').addEventListener('click', ()=>{
-  const rel=activeRelease();
-  const personId=$('#tPerson').value;
-  const start=$('#tStart').value;
-  const days=parseFloat($('#tDays').value);
-  const type=$('#tType').value;
-  const number=$('#tNum').value.trim();
-  const title=$('#tDesc').value.trim();
-  const err=$('#tErr');
+      /* --- задача --- */
+      let editingTask = null;
+      function openTask(id) {
+        const rel = activeRelease();
+        if (!rel) {
+          toast("Сначала создайте релиз");
+          return;
+        }
+        if (!state.people.length) {
+          toast("Сначала заведите сотрудников");
+          return;
+        }
+        editingTask = id || null;
+        const t = id ? state.tasks.find((x) => x.id === id) : null;
+        $("#taskTitle").textContent = t
+          ? "Редактирование задачи"
+          : "Новая задача";
+        $("#tPerson").innerHTML = state.people
+          .map(
+            (p) =>
+              `<option value="${p.id}">${esc(p.name || "Без имени")}</option>`,
+          )
+          .join("");
+        $("#tPerson").value = t ? t.personId : state.people[0].id;
+        $("#tStart").min = rel.start;
+        $("#tStart").max = rel.end;
+        $("#tStart").value = t ? t.start : rel.start;
+        $("#tDays").value = t ? t.days : 1;
+        $("#tType").value = t ? t.type || "task" : "task";
+        $("#tNum").value = t ? t.number || "" : "";
+        $("#tDesc").value = t ? t.title || "" : "";
+        $("#tErr").textContent = "";
+        $("#tDelete").style.display = t ? "" : "none";
+        $("#tSave").textContent = t ? "Подтвердить" : "Добавить";
+        openModal("#mTask");
+        setTimeout(() => $("#tDays").focus(), 50);
+      }
+      $("#tSave").addEventListener("click", () => {
+        const rel = activeRelease();
+        const personId = $("#tPerson").value;
+        const start = $("#tStart").value;
+        const days = parseFloat($("#tDays").value);
+        const type = $("#tType").value;
+        const number = $("#tNum").value.trim();
+        const title = $("#tDesc").value.trim();
+        const err = $("#tErr");
 
-  if(!personId){ err.textContent='Выберите исполнителя'; return; }
-  if(!start){ err.textContent='Укажите дату начала'; return; }
-  if(!(days>0)){ err.textContent='Время должно быть больше 0'; return; }
-  if(diffDays(rel.start,start)<0 || diffDays(start,rel.end)<0){ err.textContent='Дата вне периода релиза'; return; }
-  if(diffDays(start, addDays(rel.start,0))>=0 && diffDays(rel.start,start)+days > diffDays(rel.start,rel.end)+1){
-    err.textContent='Задача выходит за границы релиза'; return;
-  }
-  if(editingTask){
-    const t=state.tasks.find(x=>x.id===editingTask);
-    Object.assign(t,{personId,start,days,type,number,title});
-    toast('Задача обновлена');
-  } else {
-    state.tasks.push({ id:uid(), releaseId:rel.id, personId, start, days, type, number, title });
-    toast('Задача добавлена');
-  }
-  save(); render(); closeModal('#mTask');
-});
-$('#tDelete').addEventListener('click', ()=>{
-  if(!editingTask) return;
-  if(!confirm('Удалить задачу?')) return;
-  state.tasks=state.tasks.filter(t=>t.id!==editingTask);
-  save(); render(); closeModal('#mTask'); toast('Задача удалена');
-});
+        if (!personId) {
+          err.textContent = "Выберите исполнителя";
+          return;
+        }
+        if (!start) {
+          err.textContent = "Укажите дату начала";
+          return;
+        }
+        if (!(days > 0)) {
+          err.textContent = "Время должно быть больше 0";
+          return;
+        }
+        if (diffDays(rel.start, start) < 0 || diffDays(start, rel.end) < 0) {
+          err.textContent = "Дата вне периода релиза";
+          return;
+        }
+        if (
+          diffDays(start, addDays(rel.start, 0)) >= 0 &&
+          diffDays(rel.start, start) + days > diffDays(rel.start, rel.end) + 1
+        ) {
+          err.textContent = "Задача выходит за границы релиза";
+          return;
+        }
+        if (editingTask) {
+          const t = state.tasks.find((x) => x.id === editingTask);
+          Object.assign(t, { personId, start, days, type, number, title });
+          toast("Задача обновлена");
+        } else {
+          state.tasks.push({
+            id: uid(),
+            releaseId: rel.id,
+            personId,
+            start,
+            days,
+            type,
+            number,
+            title,
+          });
+          toast("Задача добавлена");
+        }
+        save();
+        render();
+        closeModal("#mTask");
+      });
+      $("#tDelete").addEventListener("click", () => {
+        if (!editingTask) return;
+        if (!confirm("Удалить задачу?")) return;
+        state.tasks = state.tasks.filter((t) => t.id !== editingTask);
+        save();
+        render();
+        closeModal("#mTask");
+        toast("Задача удалена");
+      });
 
-/* --- сотрудники --- */
-function openPeople(){ renderPeople(); openModal('#mPeople'); }
-function renderPeople(){
-  const box=$('#plist');
-  if(!state.people.length){ box.innerHTML=`<div class="hint">Пока нет сотрудников.</div>`; return; }
-  box.innerHTML = state.people.map(p=>`<div class="prow" data-id="${p.id}">
+      /* --- сотрудники --- */
+      function openPeople() {
+        renderPeople();
+        openModal("#mPeople");
+      }
+      function renderPeople() {
+        const box = $("#plist");
+        if (!state.people.length) {
+          box.innerHTML = `<div class="hint">Пока нет сотрудников.</div>`;
+          return;
+        }
+        box.innerHTML = state.people
+          .map(
+            (p) => `<div class="prow" data-id="${p.id}">
     <input type="color" value="${p.color}" data-c>
     <input type="text" value="${esc(p.name)}" data-n placeholder="Имя">
     <button class="ghost" data-x title="Удалить">✕</button>
-  </div>`).join('');
-  box.querySelectorAll('.prow').forEach(row=>{
-    const id=row.dataset.id;
-    row.querySelector('[data-n]').addEventListener('input', e=>{
-      const p=state.people.find(x=>x.id===id); p.name=e.target.value; save();
-      renderTabs(); // шапка обновится при закрытии
-    });
-    row.querySelector('[data-c]').addEventListener('input', e=>{
-      const p=state.people.find(x=>x.id===id); p.color=e.target.value; save(); render();
-    });
-    row.querySelector('[data-x]').addEventListener('click', ()=>{
-      const p=state.people.find(x=>x.id===id);
-      const cnt=state.tasks.filter(t=>t.personId===id).length;
-      if(cnt && !confirm(`У ${p.name} есть ${cnt} задач(и). Удалить сотрудника и его задачи?`)) return;
-      state.people=state.people.filter(x=>x.id!==id);
-      state.tasks=state.tasks.filter(t=>t.personId!==id);
-      save(); renderPeople(); render();
-    });
-  });
-}
-$('#pAdd').addEventListener('click', ()=>{
-  const color=PALETTE[state.people.length % PALETTE.length];
-  const p={ id:uid(), name:'Новый сотрудник', color };
-  state.people.push(p); save(); renderPeople(); render();
-  setTimeout(()=>{ const inp=document.querySelector(`.prow[data-id="${p.id}"] [data-n]`); if(inp){ inp.focus(); inp.select(); } },30);
-});
-$('#mPeople').addEventListener('click', e=>{ if(e.target.closest('[data-close]')) render(); });
+  </div>`,
+          )
+          .join("");
+        box.querySelectorAll(".prow").forEach((row) => {
+          const id = row.dataset.id;
+          row.querySelector("[data-n]").addEventListener("input", (e) => {
+            const p = state.people.find((x) => x.id === id);
+            p.name = e.target.value;
+            save();
+            renderTabs(); // шапка обновится при закрытии
+          });
+          row.querySelector("[data-c]").addEventListener("input", (e) => {
+            const p = state.people.find((x) => x.id === id);
+            p.color = e.target.value;
+            save();
+            render();
+          });
+          row.querySelector("[data-x]").addEventListener("click", () => {
+            const p = state.people.find((x) => x.id === id);
+            const cnt = state.tasks.filter((t) => t.personId === id).length;
+            if (
+              cnt &&
+              !confirm(
+                `У ${p.name} есть ${cnt} задач(и). Удалить сотрудника и его задачи?`,
+              )
+            )
+              return;
+            state.people = state.people.filter((x) => x.id !== id);
+            state.tasks = state.tasks.filter((t) => t.personId !== id);
+            save();
+            renderPeople();
+            render();
+          });
+        });
+      }
+      $("#pAdd").addEventListener("click", () => {
+        const color = PALETTE[state.people.length % PALETTE.length];
+        const p = { id: uid(), name: "Новый сотрудник", color };
+        state.people.push(p);
+        save();
+        renderPeople();
+        render();
+        setTimeout(() => {
+          const inp = document.querySelector(
+            `.prow[data-id="${p.id}"] [data-n]`,
+          );
+          if (inp) {
+            inp.focus();
+            inp.select();
+          }
+        }, 30);
+      });
+      $("#mPeople").addEventListener("click", (e) => {
+        if (e.target.closest("[data-close]")) render();
+      });
 
-/* ============ экспорт / импорт ============ */
-$('#btnExport').addEventListener('click', ()=>{
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='team-planner-'+todayISO()+'.json';
-  a.click(); URL.revokeObjectURL(a.href);
-  toast('Файл сохранён');
-});
-$('#btnImport').addEventListener('click', ()=>$('#fileImport').click());
-$('#fileImport').addEventListener('change', e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      const s=JSON.parse(r.result);
-      if(!s.people||!s.releases||!s.tasks) throw 0;
-      state=s; if(!state.activeId && state.releases[0]) state.activeId=state.releases[0].id;
-      save(); render(); toast('Данные загружены');
-    }catch(err){ alert('Не удалось прочитать файл'); }
-  };
-  r.readAsText(f); e.target.value='';
-});
+      /* ============ экспорт / импорт ============ */
+      $("#btnExport").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], {
+          type: "application/json",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "team-planner-" + todayISO() + ".json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast("Файл сохранён");
+      });
+      $("#btnImport").addEventListener("click", () => $("#fileImport").click());
+      $("#fileImport").addEventListener("change", (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => {
+          try {
+            const s = JSON.parse(r.result);
+            if (!s.people || !s.releases || !s.tasks) throw 0;
+            state = s;
+            if (!state.activeId && state.releases[0])
+              state.activeId = state.releases[0].id;
+            save();
+            render();
+            toast("Данные загружены");
+          } catch (err) {
+            alert("Не удалось прочитать файл");
+          }
+        };
+        r.readAsText(f);
+        e.target.value = "";
+      });
 
-/* кнопки верхней панели */
-$('#btnPeople').addEventListener('click', openPeople);
-$('#btnAddTask').addEventListener('click', ()=>openTask(null));
+      /* ============ версии (автобэкапы) ============ */
+      $("#btnBackups").addEventListener("click", openBackups);
 
-/* ============ демо ============ */
-function loadDemo(){
-  const st=todayISO();
-  const names=['Женя Л.','Никита','Даниил','Влад','Женя Ш.','Юра','Захар','Оля'];
-  state.people=names.map((n,i)=>({ id:uid(), name:n, color:PALETTE[i%PALETTE.length] }));
-  const rel={ id:uid(), number:'3.14', start:st, end:addDays(st,9) };
-  state.releases=[rel]; state.activeId=rel.id;
-  const P=state.people;
-  state.tasks=[
-    { id:uid(), releaseId:rel.id, personId:P[0].id, start:addDays(st,0), days:2,   type:'task', number:'SPEKTR-9523', title:'Логику создания снэпшота при публикации' },
-    { id:uid(), releaseId:rel.id, personId:P[0].id, start:addDays(st,3), days:4,   type:'task', number:'SPEKTR-10725', title:'Переход на общее окно для WS-V3' },
-    { id:uid(), releaseId:rel.id, personId:P[1].id, start:addDays(st,0), days:3,   type:'task', number:'SPEKTR-9712', title:'Фильтрация и сортировка в корзине' },
-    { id:uid(), releaseId:rel.id, personId:P[1].id, start:addDays(st,3), days:1,   type:'task', number:'SPEKTR-10021', title:'Инструмент управления настройками' },
-    { id:uid(), releaseId:rel.id, personId:P[1].id, start:addDays(st,6), days:1.5, type:'task', number:'SPEKTR-10652', title:'Адаптивная вёрстка' },
-    { id:uid(), releaseId:rel.id, personId:P[2].id, start:addDays(st,0), days:1,   type:'task', number:'SPEKTR-9882', title:'Дополнить блок технических данных' },
-    { id:uid(), releaseId:rel.id, personId:P[2].id, start:addDays(st,4), days:3,   type:'task', number:'SPEKTR-10071', title:'Контекстный доступ к ширифтам' },
-    { id:uid(), releaseId:rel.id, personId:P[3].id, start:addDays(st,0), days:5,   type:'vacation', title:'' },
-    { id:uid(), releaseId:rel.id, personId:P[4].id, start:addDays(st,0), days:5,   type:'task', number:'SPEKTR-9218', title:'Перенести элементы на следующую строку' },
-    { id:uid(), releaseId:rel.id, personId:P[4].id, start:addDays(st,5), days:1,   type:'task', number:'SPEKTR-9675', title:'Проверка выхода за края' },
-    { id:uid(), releaseId:rel.id, personId:P[4].id, start:addDays(st,6), days:1.5, type:'task', number:'SPEKTR-10173', title:'Переход на единый редактор' },
-    { id:uid(), releaseId:rel.id, personId:P[5].id, start:addDays(st,0), days:4,   type:'task', number:'SPEKTR-9381', title:'Доработать определение навигации ширифтов' },
-    { id:uid(), releaseId:rel.id, personId:P[5].id, start:addDays(st,4), days:3,   type:'task', number:'SPEKTR-9382', title:'Доработать определение навигации ширифтов' },
-    { id:uid(), releaseId:rel.id, personId:P[6].id, start:addDays(st,0), days:2.5, type:'task', number:'SPEKTR-9870', title:'Поиск команды на вкладке Команды в ЛК' },
-    { id:uid(), releaseId:rel.id, personId:P[6].id, start:addDays(st,7), days:3,   type:'vacation', title:'' },
-    { id:uid(), releaseId:rel.id, personId:P[7].id, start:addDays(st,0), days:1,   type:'task', number:'SPEKTR-10957', title:'Починить русский сеансовый PROD' },
-    { id:uid(), releaseId:rel.id, personId:P[7].id, start:addDays(st,0), days:1,   type:'task', number:'SPEKTR-10158', title:'Включить сеансовый PROD' },
-    { id:uid(), releaseId:rel.id, personId:P[7].id, start:addDays(st,2), days:5,   type:'task', number:'SPEKTR-10170', title:'Оптимизация взаимодействия с vectorNetwork' },
-  ];
-  save(); render(); toast('Демо-данные загружены');
-}
+      async function openBackups() {
+        openModal("#mBackups");
+        const hint = $("#bkHint"),
+          list = $("#bklist");
+        list.innerHTML = "";
+        if (backend !== "server") {
+          hint.textContent =
+            "Версии доступны только при запуске через start.bat (сервер не найден).";
+          return;
+        }
+        hint.textContent = "Загрузка…";
+        try {
+          const r = await fetch("/api/backups", { cache: "no-store" });
+          const { backups } = await r.json();
+          if (!backups.length) {
+            hint.textContent =
+              "Версий пока нет. Они создаются при изменениях и при каждом запуске.";
+            return;
+          }
+          hint.textContent =
+            "Нажмите «Восстановить» — данные файла вернутся к выбранной версии.";
+          list.innerHTML = backups
+            .map(
+              (b, i) => `
+      <div class="bkrow">
+        <span class="bk-when">${b.at}</span>
+        <span class="bk-meta">${i === 0 ? "самый свежий снимок" : "снимок"} · ${(b.size / 1024).toFixed(1)} КБ</span>
+        <button data-restore="${b.name}">Восстановить</button>
+      </div>`,
+            )
+            .join("");
+          list.querySelectorAll("[data-restore]").forEach((btn) => {
+            btn.addEventListener("click", () =>
+              restoreBackup(btn.dataset.restore),
+            );
+          });
+        } catch (e) {
+          hint.textContent = "Не удалось получить список версий.";
+        }
+      }
 
-/* ============ старт ============ */
-(async function(){
-  await initStorage();
-  if(state.releases.length && !state.activeId) state.activeId = state.releases[0].id;
-  render();
+      async function restoreBackup(name) {
+        if (
+          !confirm(
+            "Восстановить данные из этой версии? Текущее состояние тоже будет сохранено в backups.",
+          )
+        )
+          return;
+        try {
+          const r = await fetch("/api/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+          });
+          const j = await r.json();
+          if (!j.ok) throw new Error(j.error);
+          state = j.data;
+          if (state.releases.length && !state.activeId)
+            state.activeId = state.releases[0].id;
+          render();
+          toast("Данные восстановлены");
+          closeModal("#mBackups");
+        } catch (e) {
+          alert("Не удалось восстановить: " + e.message);
+        }
+      }
 
-  // если в браузере есть данные, отличающиеся от файла — предложим выбрать
-  if(pendingLocal){
-    const useLocal = confirm(
-      'Найдены данные в браузере, отличающиеся от data.json.\n\n' +
-      'OK — загрузить данные из браузера (они перезапишут файл)\n' +
-      'Отмена — оставить данные из файла'
-    );
-    if(useLocal){
-      state = pendingLocal;
-      if(state.releases.length && !state.activeId) state.activeId = state.releases[0].id;
-      persist();
-      render();
-    }
-    pendingLocal = null;
-  }
-})();
-</script>
-</body>
+      /* кнопки верхней панели */
+      $("#btnPeople").addEventListener("click", openPeople);
+      $("#btnAddTask").addEventListener("click", () => openTask(null));
+
+      /* ============ демо ============ */
+      function loadDemo() {
+        const st = todayISO();
+        const names = [
+          "Женя Л.",
+          "Никита",
+          "Даниил",
+          "Влад",
+          "Женя Ш.",
+          "Юра",
+          "Захар",
+          "Оля",
+        ];
+        state.people = names.map((n, i) => ({
+          id: uid(),
+          name: n,
+          color: PALETTE[i % PALETTE.length],
+        }));
+        const rel = {
+          id: uid(),
+          number: "3.14",
+          start: st,
+          end: addDays(st, 9),
+        };
+        state.releases = [rel];
+        state.activeId = rel.id;
+        const P = state.people;
+        state.tasks = [
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[0].id,
+            start: addDays(st, 0),
+            days: 2,
+            type: "task",
+            number: "SPEKTR-9523",
+            title: "Логику создания снэпшота при публикации",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[0].id,
+            start: addDays(st, 3),
+            days: 4,
+            type: "task",
+            number: "SPEKTR-10725",
+            title: "Переход на общее окно для WS-V3",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[1].id,
+            start: addDays(st, 0),
+            days: 3,
+            type: "task",
+            number: "SPEKTR-9712",
+            title: "Фильтрация и сортировка в корзине",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[1].id,
+            start: addDays(st, 3),
+            days: 1,
+            type: "task",
+            number: "SPEKTR-10021",
+            title: "Инструмент управления настройками",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[1].id,
+            start: addDays(st, 6),
+            days: 1.5,
+            type: "task",
+            number: "SPEKTR-10652",
+            title: "Адаптивная вёрстка",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[2].id,
+            start: addDays(st, 0),
+            days: 1,
+            type: "task",
+            number: "SPEKTR-9882",
+            title: "Дополнить блок технических данных",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[2].id,
+            start: addDays(st, 4),
+            days: 3,
+            type: "task",
+            number: "SPEKTR-10071",
+            title: "Контекстный доступ к ширифтам",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[3].id,
+            start: addDays(st, 0),
+            days: 5,
+            type: "vacation",
+            title: "",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[4].id,
+            start: addDays(st, 0),
+            days: 5,
+            type: "task",
+            number: "SPEKTR-9218",
+            title: "Перенести элементы на следующую строку",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[4].id,
+            start: addDays(st, 5),
+            days: 1,
+            type: "task",
+            number: "SPEKTR-9675",
+            title: "Проверка выхода за края",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[4].id,
+            start: addDays(st, 6),
+            days: 1.5,
+            type: "task",
+            number: "SPEKTR-10173",
+            title: "Переход на единый редактор",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[5].id,
+            start: addDays(st, 0),
+            days: 4,
+            type: "task",
+            number: "SPEKTR-9381",
+            title: "Доработать определение навигации ширифтов",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[5].id,
+            start: addDays(st, 4),
+            days: 3,
+            type: "task",
+            number: "SPEKTR-9382",
+            title: "Доработать определение навигации ширифтов",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[6].id,
+            start: addDays(st, 0),
+            days: 2.5,
+            type: "task",
+            number: "SPEKTR-9870",
+            title: "Поиск команды на вкладке Команды в ЛК",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[6].id,
+            start: addDays(st, 7),
+            days: 3,
+            type: "vacation",
+            title: "",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[7].id,
+            start: addDays(st, 0),
+            days: 1,
+            type: "task",
+            number: "SPEKTR-10957",
+            title: "Починить русский сеансовый PROD",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[7].id,
+            start: addDays(st, 0),
+            days: 1,
+            type: "task",
+            number: "SPEKTR-10158",
+            title: "Включить сеансовый PROD",
+          },
+          {
+            id: uid(),
+            releaseId: rel.id,
+            personId: P[7].id,
+            start: addDays(st, 2),
+            days: 5,
+            type: "task",
+            number: "SPEKTR-10170",
+            title: "Оптимизация взаимодействия с vectorNetwork",
+          },
+        ];
+        save();
+        render();
+        toast("Демо-данные загружены");
+      }
+
+      /* ============ старт ============ */
+      (async function () {
+        await initStorage();
+        if (state.releases.length && !state.activeId)
+          state.activeId = state.releases[0].id;
+        render();
+
+        // если в браузере есть данные, отличающиеся от файла — предложим выбрать
+        if (pendingLocal) {
+          const useLocal = confirm(
+            "Найдены данные в браузере, отличающиеся от data.json.\n\n" +
+              "OK — загрузить данные из браузера (они перезапишут файл)\n" +
+              "Отмена — оставить данные из файла",
+          );
+          if (useLocal) {
+            state = pendingLocal;
+            if (state.releases.length && !state.activeId)
+              state.activeId = state.releases[0].id;
+            persist();
+            render();
+          }
+          pendingLocal = null;
+        }
+      })();
+    </script>
+  </body>
 </html>

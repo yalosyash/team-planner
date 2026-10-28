@@ -1,6 +1,7 @@
 # рабочие данные пользователя — не в репозиторий
 data.json
 data.json.tmp
+backups/
 
 # системное
 Thumbs.db
