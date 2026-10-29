@@ -303,19 +303,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- штатное завершение из интерфейса ---
-  // Сначала снимок: последние правки должны попасть в backups/, иначе
-  // «Завершить» может откатить работу до предыдущего автоснимка.
-  if (url === "/api/quit" && req.method === "POST") {
-    res.writeHead(200, { "Content-Type": TYPES[".json"] });
-    res.end('{"ok":true}');
-    console.log("Завершение из интерфейса — останавливаю сервер.");
-    snapshot("before-quit", true);
-    // ответ должен успеть уйти в браузер
-    setTimeout(() => shutdown("manual"), 120);
-    return;
-  }
-
   if (url === "/api/health") {
     res.writeHead(200, { "Content-Type": TYPES[".json"] });
     res.end(JSON.stringify({ ok: true, dataFile: DATA, backupsDir: BACKUPS }));

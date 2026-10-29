@@ -9,13 +9,6 @@ let writeTimer = null;
 let saving = false,
   dirtyWhileSaving = false;
 
-/* Приложение открыто по http — значит, его отдал наш сервер.
-   При открытии файлом (file://) сервера нет по определению: там ни баннер
-   о потере связи, ни кнопка «Завершить» не нужны. */
-const SERVED = location.protocol === "http:" || location.protocol === "https:";
-let unsaved = false; // есть правки, которые не дошли до диска
-let quitting = false; // идёт штатное завершение — связь больше не проверяем
-
 function valid(s) {
   return (
     s &&
@@ -25,45 +18,31 @@ function valid(s) {
   );
 }
 
-/* Статус места хранения в шапке.
-   Это единственная точка, которая сообщает пользователю о связи с сервером:
-   индикатор и баннер внизу обновляются отсюда, чтобы не разъезжаться. */
-let statusMode = "";
-let linkLost = false; // сервер был, но перестал отвечать
-
+/* Статус места хранения в шапке */
 function setStatus(mode, text) {
-  statusMode = mode;
   const el = document.getElementById("storeStatus");
-  if (el) {
-    const cls =
-      mode === "server"
-        ? "on"
-        : mode === "browser"
-          ? "warn"
-          : mode === "error"
-            ? "err"
-            : "";
-    const clickable = mode === "error" || mode === "browser";
-    el.className = "store " + cls + (clickable ? " is-click" : "");
-    el.innerHTML = '<span class="sdot"></span>' + text;
-    el.title = clickable
-      ? "Нажмите, чтобы проверить подключение"
-      : "Где хранятся данные";
-  }
-  unsaved = mode === "error";
-  linkLost =
-    SERVED && !quitting && (mode === "error" || mode === "browser");
-  renderBanner();
+  if (!el) return;
+  const cls =
+    mode === "server"
+      ? "on"
+      : mode === "browser"
+        ? "warn"
+        : mode === "error"
+          ? "err"
+          : "";
+  el.className = "store " + cls;
+  el.innerHTML = '<span class="sdot"></span>' + text;
 }
 
-/* Красная плашка внизу по центру: висит, пока связи нет.
-   Появляется только если приложение открыто с сервера — при запуске
-   файлом (file://) сервера нет по определению. */
-function renderBanner() {
-  const el = document.getElementById("serverBanner");
-  if (el) el.classList.toggle("show", linkLost);
-  // тост внизу по центру не должен наезжать на плашку
-  document.body.classList.toggle("has-banner", linkLost);
+/* Запись не удалась. Держим это в памяти, чтобы индикатор не стал зелёным
+   просто потому, что сервер ожил, — данные-то всё ещё не на диске. */
+let pendingFailed = false;
+
+/* Есть ли правки, которые не дошли до диска. По этому признаку сигнал
+   вкладки (keepalive.js) решает, можно ли вернуть зелёный индикатор:
+   сервер может отвечать, но последняя запись так и не прошла. */
+function hasUnsaved() {
+  return !!writeTimer || saving || dirtyWhileSaving || pendingFailed;
 }
 
 function markDirty() {
@@ -76,30 +55,10 @@ function persist() {
   else if (backend === "browser") persistBrowser();
 }
 
-/* Сохранить немедленно — вызывается перед завершением работы, чтобы
-   последняя правка (те самые 0.5 сек задержки) не потерялась. */
-function pushState() {
-  clearTimeout(writeTimer);
-  writeTimer = null;
-  if (backend === "browser") {
-    persistBrowser();
-    return Promise.resolve();
-  }
-  if (backend !== "server") return Promise.resolve();
-  return fetch("/api/data", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(state),
-  })
-    .then((r) => (r.ok ? undefined : Promise.reject(r)))
-    .catch(() => {});
-}
-
-/* При закрытии вкладки промис дождаться некому — sendBeacon переживает
-   выгрузку страницы, fetch в этот момент браузер может оборвать.
-   Если прошлая запись не удалась (unsaved), последнюю правку тоже шлём. */
+/* Сохранить немедленно — вызывается при закрытии вкладки, чтобы
+   последнее изменение (те самые 0.5 сек задержки) не потерялось. */
 function flushBeacon() {
-  if (!writeTimer && !unsaved) return;
+  if (!writeTimer) return;
   clearTimeout(writeTimer);
   writeTimer = null;
   if (backend === "browser") {
@@ -130,12 +89,14 @@ function persistServer() {
   })
     .then((r) => (r.ok ? r.json() : Promise.reject(r)))
     .then(() => {
+      pendingFailed = false;
       setStatus("server", "Сохранено в data.json");
       dropBrowserCopy();
     })
     .catch(() => {
       // на диск не легло — хотя бы не теряем правки при перезагрузке вкладки:
       // при следующем старте приложение предложит взять их из браузера
+      pendingFailed = true;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
       } catch (e) {}

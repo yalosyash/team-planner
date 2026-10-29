@@ -38,18 +38,6 @@
           Импорт
         </button>
         <button id="btnBackups">Версии</button>
-        <button
-          id="btnQuit"
-          class="quit"
-          title="Остановить сервер и закрыть приложение"
-          aria-label="Остановить сервер и закрыть приложение"
-        >
-          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
-            <path
-              d="M6 2.5H4.2c-.7 0-1.2.5-1.2 1.2v8.6c0 .7.5 1.2 1.2 1.2H6M10 5l3 3-3 3M13 8H6.5"
-            />
-          </svg>
-        </button>
         <input
           type="file"
           id="fileImport"
@@ -202,38 +190,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- Плашка «нет связи с сервером»: висит, пока связи нет -->
-    <div class="linkbar" id="serverBanner" role="status" aria-live="polite">
-      <span class="lb-text" id="bannerText"
-        >Сервер остановлен — изменения не сохраняются</span
-      >
-      <button type="button" class="lb-btn" id="bannerRetry">
-        Переподключиться
-      </button>
-    </div>
-
-    <!-- Экран после штатной остановки сервера -->
-    <div class="bye" id="byeScreen">
-      <div class="bye-card">
-        <div class="bye-ico">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3v8" />
-            <path d="M6.7 6.7a7.5 7.5 0 1 0 10.6 0" />
-          </svg>
-        </div>
-        <h2>Сервер остановлен</h2>
-        <p>
-          Данные сохранены в <b>data.json</b>, их версия — в <b>backups</b>.
-        </p>
-        <p>
-          Вкладку браузер сам не закроет — это делает человек. Можно закрывать.
-        </p>
-        <p class="bye-sub">
-          Чтобы продолжить работу, запустите <b>start.bat</b> ещё раз.
-        </p>
-      </div>
-    </div>
-
     <script src="js/utils.js"></script>
     <script src="js/store.js"></script>
     <script src="js/modals.js"></script>
@@ -244,7 +200,6 @@
     <script src="js/board.js"></script>
     <script src="js/data-io.js"></script>
     <script src="js/keepalive.js"></script>
-    <script src="js/connection.js"></script>
     <script src="js/demo.js"></script>
     <script src="js/main.js"></script>
   </body>
