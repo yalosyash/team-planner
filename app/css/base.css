@@ -1,0 +1,135 @@
+/* ============================================================
+   base.css — сброс, страница, кнопки, общие элементы интерфейса
+   ============================================================ */
+
+/* Атрибут hidden должен побеждать display из классов кнопок */
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* фон и на html: иначе при прокрутке за край в тёмной теме мелькает белое */
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    14px/1.35 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line2);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button .ico {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+button:hover .ico {
+  opacity: 1;
+}
+
+button:hover {
+  background: var(--panel2);
+}
+
+button.primary {
+  background: var(--accent-btn);
+  border-color: var(--accent-btn);
+  color: var(--on-accent);
+}
+
+button.primary:hover {
+  background: var(--accent-btn-hover);
+  border-color: var(--accent-btn-hover);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger-bd);
+}
+
+button.danger:hover {
+  background: var(--danger-bg);
+}
+
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 7px;
+  border-radius: 6px;
+}
+
+button.ghost:hover {
+  background: var(--hover);
+}
+
+/* тост */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.25s;
+  z-index: 80;
+}
+
+.toast.show {
+  opacity: 1;
+  bottom: 30px;
+}
+
+/* сообщение для браузера без JavaScript */
+.noscript {
+  margin: 24px;
+  padding: 16px;
+  border: 1px solid var(--danger-bd);
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: 8px;
+}

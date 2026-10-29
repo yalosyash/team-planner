@@ -29,7 +29,7 @@ lnk = fso.BuildPath(dir, name & ".lnk")
 If fso.FileExists(lnk) Then WScript.Quit 0
 
 target = fso.BuildPath(dir, "start.bat")
-icon = fso.BuildPath(dir, "app\favicon.ico")
+icon = fso.BuildPath(dir, "app\assets\favicon.ico")
 
 If Not fso.FileExists(target) Then WScript.Quit 0
 

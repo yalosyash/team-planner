@@ -1,50 +1,26 @@
 /* ============================================================
-   task.js — окно задачи
+   features/task.js — окно задачи: создание, правка, удаление.
    ============================================================ */
-/* --- задача --- */
+import { $, esc, toast } from "../core/dom.js";
+import { diffDays, eachDay, isWeekend, nextWorkday } from "../core/dates.js";
+import { activeRelease, loadAt, state, save } from "../core/storage.js";
+import { uid } from "../core/util.js";
+import { taskLayout } from "../core/schedule.js";
+import { render } from "../core/render.js";
+import { closeModal, openModal } from "../ui/modal.js";
+
 const DESC_MAX = 500;
-let editingTask = null;
-
-/* задача считается в рабочих днях; отпуск/больничный и задачи
-   с отметкой «работа в выходные» — в календарных */
-function isCalendarTask(t) {
-  return t.type === "vacation" || t.type === "sick" || !!t.weekend;
-}
-
-/* раскладка задачи по календарным дням релиза:
-   [{ i: индекс дня от начала релиза, amount: доля дня }]
-   выходные внутри задачи дают нулевые участки — они нужны только
-   для геометрии карточки (единый блок с заштрихованными выходными) */
-function taskLayout(t, relStart) {
-  const out = [];
-  let left = t.days || 0;
-  let d = t.start;
-  const calendar = isCalendarTask(t);
-  let guard = 0;
-  while (left > 1e-9 && guard++ < 800) {
-    if (calendar || isWorkday(d)) {
-      const amount = round(Math.min(1, left));
-      out.push({ i: diffDays(relStart, d), amount });
-      left = round(left - amount);
-    }
-    d = addDays(d, 1);
-  }
-  return out;
-}
+let editingId = null;
 
 /* окно задачи: дата авто-подстановки = первый свободный рабочий день
    от начала релиза; null — если свободного дня нет */
-function firstFreeWorkday(personId, rel) {
-  for (const d of eachDay(rel.start, rel.end)) {
-    if (!isWorkday(d)) continue;
-    if (loadAt(personId, rel, diffDays(rel.start, d)) < 1e-9) return d;
+function firstFreeWorkday(personId, release) {
+  for (const day of eachDay(release.start, release.end)) {
+    if (isWeekend(day)) continue;
+    if (loadAt(personId, release, diffDays(release.start, day)) < 1e-9)
+      return day;
   }
   return null;
-}
-
-/* сколько дней показывает задача (для подписи на карточке) */
-function taskDur(t) {
-  return fmtDur(t.days);
 }
 
 /* описание: подгоняем высоту под текст и обновляем счётчик символов */
@@ -54,10 +30,10 @@ function syncDesc() {
   // maxlength не спасает при вставке/автозаполнении — подрезаем явно
   if (el.value.length > DESC_MAX) el.value = el.value.slice(0, DESC_MAX);
   const count = $("#tDescCount");
-  const len = el.value.length;
+  const length = el.value.length;
   if (count) {
-    count.textContent = len + " / " + DESC_MAX;
-    count.classList.toggle("full", len >= DESC_MAX);
+    count.textContent = length + " / " + DESC_MAX;
+    count.classList.toggle("full", length >= DESC_MAX);
   }
   // высота строго по содержимому — прокрутки внутри поля нет.
   // box-sizing: border-box, поэтому к scrollHeight добавляем рамку,
@@ -66,41 +42,29 @@ function syncDesc() {
   const border = el.offsetHeight - el.clientHeight;
   el.style.height = el.scrollHeight + border + "px";
 }
-$("#tDesc").addEventListener("input", syncDesc);
 
 /* тип задачи управляет подписями и доступностью чекбокса выходных */
 function syncTaskType() {
   const type = $("#tType").value;
-  const vac = type === "vacation" || type === "sick";
-  $("#tDaysLabel").textContent = vac ? "Дней" : "Рабочих дней";
-  $("#tWeekendWrap").style.display = vac ? "none" : "";
-  if (vac) $("#tWeekend").checked = false;
+  const calendar = type === "vacation" || type === "sick";
+  $("#tDaysLabel").textContent = calendar ? "Дней" : "Рабочих дней";
+  $("#tWeekendWrap").hidden = calendar;
+  if (calendar) $("#tWeekend").checked = false;
 }
 
 /* дата начала: подставляем первый свободный рабочий день */
 function applyAutoStart() {
-  const rel = activeRelease();
+  const release = activeRelease();
   const personId = $("#tPerson").value;
-  if (!rel || !personId) return;
-  const free = firstFreeWorkday(personId, rel);
+  if (!release || !personId) return;
+  const free = firstFreeWorkday(personId, release);
   // свободного дня нет — предлагаем ближайший рабочий, ошибку покажем при сохранении
-  $("#tStart").value = free || nextWorkday(rel.start);
+  $("#tStart").value = free || nextWorkday(release.start);
 }
-$("#tPerson").addEventListener("change", () => {
-  applyAutoStart();
-  $("#tErr").textContent = "";
-});
-$("#tType").addEventListener("change", syncTaskType);
-$("#tWeekend").addEventListener("change", () => {
-  // включили работу в выходные — можно ставить на любой день
-  if ($("#tWeekend").checked) return;
-  const d = $("#tStart").value;
-  if (d && isWeekend(d)) $("#tStart").value = nextWorkday(d);
-});
 
-function openTask(id) {
-  const rel = activeRelease();
-  if (!rel) {
+export function openTask(id) {
+  const release = activeRelease();
+  if (!release) {
     toast("Сначала создайте релиз");
     return;
   }
@@ -108,40 +72,47 @@ function openTask(id) {
     toast("Сначала заведите сотрудников");
     return;
   }
-  editingTask = id || null;
-  const t = id ? state.tasks.find((x) => x.id === id) : null;
-  $("#taskTitle").textContent = t ? "Редактирование задачи" : "Новая задача";
+
+  editingId = id || null;
+  const task = id ? state.tasks.find((x) => x.id === id) : null;
+
+  $("#taskTitle").textContent = task ? "Редактирование задачи" : "Новая задача";
   $("#tPerson").innerHTML = state.people
     .map(
-      (p) => `<option value="${p.id}">${esc(p.name || "Без имени")}</option>`,
+      (person) =>
+        `<option value="${person.id}">${esc(person.name || "Без имени")}</option>`,
     )
     .join("");
-  $("#tPerson").value = t ? t.personId : state.people[0].id;
-  $("#tStart").min = rel.start;
-  $("#tStart").max = rel.end;
-  $("#tDays").value = t ? t.days : 1;
-  $("#tType").value = t ? t.type || "task" : "task";
-  $("#tWeekend").checked = t ? !!t.weekend : false;
+  $("#tPerson").value = task ? task.personId : state.people[0].id;
+  $("#tStart").min = release.start;
+  $("#tStart").max = release.end;
+  $("#tDays").value = task ? task.days : 1;
+  $("#tType").value = task ? task.type || "task" : "task";
+  $("#tWeekend").checked = task ? !!task.weekend : false;
   syncTaskType();
-  if (t) {
+
+  if (task) {
     // существующую задачу не сдвигаем
-    $("#tStart").value = t.start;
+    $("#tStart").value = task.start;
   } else {
-    $("#tStart").value = rel.start;
+    $("#tStart").value = release.start;
     applyAutoStart();
   }
-  $("#tNum").value = t ? t.number || "" : "";
-  $("#tDesc").value = t ? t.title || "" : "";
+
+  $("#tNum").value = task ? task.number || "" : "";
+  $("#tDesc").value = task ? task.title || "" : "";
   $("#tErr").textContent = "";
-  $("#tDelete").style.display = t ? "" : "none";
-  $("#tSave").textContent = t ? "Подтвердить" : "Добавить";
+  $("#tDelete").hidden = !task;
+  $("#tSave").textContent = task ? "Подтвердить" : "Добавить";
+
   openModal("#mTask");
   // высоту считаем после открытия: у скрытого поля scrollHeight = 0
   syncDesc();
   setTimeout(() => $("#tDays").focus(), 50);
 }
-$("#tSave").addEventListener("click", () => {
-  const rel = activeRelease();
+
+function saveTask() {
+  const release = activeRelease();
   const personId = $("#tPerson").value;
   const start = $("#tStart").value;
   const days = parseFloat($("#tDays").value);
@@ -165,7 +136,7 @@ $("#tSave").addEventListener("click", () => {
     err.textContent = "Время должно быть больше 0";
     return;
   }
-  if (diffDays(rel.start, start) < 0 || diffDays(start, rel.end) < 0) {
+  if (diffDays(release.start, start) < 0 || diffDays(start, release.end) < 0) {
     err.textContent = "Дата вне периода релиза";
     return;
   }
@@ -174,18 +145,20 @@ $("#tSave").addEventListener("click", () => {
       "Дата начала — выходной. Включите «Работа в выходные» или выберите рабочий день";
     return;
   }
-  const span = taskLayout({ start, days, type, weekend }, rel.start);
+
+  const span = taskLayout({ start, days, type, weekend }, release.start);
   if (!span.length) {
     err.textContent = "Задача не занимает ни одного дня";
     return;
   }
-  if (span[span.length - 1].i > diffDays(rel.start, rel.end)) {
+  if (span[span.length - 1].i > diffDays(release.start, release.end)) {
     err.textContent = "Задача выходит за границы релиза";
     return;
   }
-  if (editingTask) {
-    const t = state.tasks.find((x) => x.id === editingTask);
-    Object.assign(t, {
+
+  if (editingId) {
+    const task = state.tasks.find((x) => x.id === editingId);
+    Object.assign(task, {
       personId,
       start,
       days,
@@ -199,7 +172,7 @@ $("#tSave").addEventListener("click", () => {
   } else {
     state.tasks.push({
       id: uid(),
-      releaseId: rel.id,
+      releaseId: release.id,
       personId,
       start,
       days,
@@ -211,16 +184,35 @@ $("#tSave").addEventListener("click", () => {
     });
     toast("Задача добавлена");
   }
+
   save();
   render();
   closeModal("#mTask");
-});
-$("#tDelete").addEventListener("click", () => {
-  if (!editingTask) return;
+}
+
+function deleteTask() {
+  if (!editingId) return;
   if (!confirm("Удалить задачу?")) return;
-  state.tasks = state.tasks.filter((t) => t.id !== editingTask);
+  state.tasks = state.tasks.filter((task) => task.id !== editingId);
   save();
   render();
   closeModal("#mTask");
   toast("Задача удалена");
-});
+}
+
+export function initTask() {
+  $("#tDesc").addEventListener("input", syncDesc);
+  $("#tPerson").addEventListener("change", () => {
+    applyAutoStart();
+    $("#tErr").textContent = "";
+  });
+  $("#tType").addEventListener("change", syncTaskType);
+  $("#tWeekend").addEventListener("change", () => {
+    // включили работу в выходные — можно ставить на любой день
+    if ($("#tWeekend").checked) return;
+    const day = $("#tStart").value;
+    if (day && isWeekend(day)) $("#tStart").value = nextWorkday(day);
+  });
+  $("#tSave").addEventListener("click", saveTask);
+  $("#tDelete").addEventListener("click", deleteTask);
+}

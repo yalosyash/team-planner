@@ -1,0 +1,431 @@
+/* ============================================================
+   modal.css — модальные окна, поля форм, список сотрудников,
+   палитра цветов, список версий
+   ============================================================ */
+
+.modal-back {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal-back.open {
+  display: flex;
+}
+
+.modal {
+  background: var(--card);
+  border-radius: 12px;
+  width: 460px;
+  max-width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.modal-h {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.modal-h .x {
+  margin-left: auto;
+}
+
+.modal-b {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+}
+
+.modal-f {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* --- поля формы --- */
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+label.check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+label.field input,
+label.field select,
+label.field textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--input-bg);
+}
+
+/* описание задачи: растёт по содержимому без внутреннего скролла,
+   при нехватке места скроллится само окно (.modal-b) */
+label.field textarea {
+  resize: none;
+  flex: none;
+  min-height: 34px;
+  max-height: none;
+  overflow: hidden;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+label.field .counter {
+  align-self: flex-end;
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  margin-top: -2px;
+}
+
+label.field .counter.full {
+  color: var(--danger);
+}
+
+/* селекты: свой шеврон вместо системной стрелки, отступ от края как у текста.
+   Цвет стрелки зашит в data-URL (в SVG внутри url() переменные не работают),
+   поэтому для тёмной темы он переопределяется отдельным правилом ниже. */
+select,
+label.field select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 36px;
+  background-color: var(--input-bg);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b7488' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  cursor: pointer;
+}
+
+select:hover,
+label.field select:hover {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233b4254' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+select:focus,
+label.field select:focus {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233b6ef6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] select,
+[data-theme="dark"] label.field select {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa4b6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] select:hover,
+[data-theme="dark"] label.field select:hover {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23e3e8f1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] select:focus,
+[data-theme="dark"] label.field select:focus {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236f9bff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+select::-ms-expand {
+  display: none;
+}
+
+/* выпадающий список рисует система: в тёмной теме просим её о тёмных
+   пунктах, иначе белое меню бьёт по глазам */
+[data-theme="dark"] option {
+  background: var(--card);
+  color: var(--ink);
+}
+
+/* единый вид фокуса для всех полей приложения — только синяя рамка, без внешнего кольца */
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+label.field input:focus,
+label.field select:focus,
+label.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* блок ошибки в модалках: места не занимает, пока текста нет */
+.err {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.err:empty {
+  display: none;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --- список сотрудников --- */
+.plist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  flex-wrap: wrap;
+}
+
+.prow .phandle {
+  flex: none;
+  cursor: grab;
+  color: var(--handle);
+  font-size: 13px;
+  letter-spacing: -2px;
+  padding: 0 2px;
+  user-select: none;
+}
+
+.prow .phandle:hover {
+  color: var(--muted);
+}
+
+.prow.dragging {
+  opacity: 0.45;
+}
+
+.prow.over-row::after,
+.prow.under-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.prow.over-row::after {
+  bottom: -5px;
+}
+
+.prow.under-row::before {
+  top: -5px;
+}
+
+.prow input[type="text"] {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  font: inherit;
+  min-width: 0;
+  background: var(--input-bg);
+  color: var(--ink);
+}
+
+.prow input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+.prow .pcolor {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.prow .pcolor:hover {
+  background: var(--panel2);
+  border-color: var(--accent);
+}
+
+.prow .pcolor .pdot {
+  width: 16px;
+  height: 16px;
+}
+
+.prow .pdel {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+}
+
+.prow .pdel svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.prow .pdel:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-bd);
+  color: var(--danger);
+}
+
+.prow .pcolor.pal-open {
+  border-color: var(--accent);
+  background: var(--panel2);
+}
+
+.pdot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* --- палитра цветов --- */
+.palgrid {
+  position: fixed;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: repeat(6, 22px);
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow-pop);
+}
+
+.palgrid .sw {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--sw-bd);
+  cursor: pointer;
+}
+
+.palgrid .sw:hover {
+  transform: scale(1.1);
+}
+
+/* выбранный цвет: тёмная галочка внутри плашки — на пастели читается
+   контрастнее белой; внешнего кольца нет, радиус плашки не растёт */
+.palgrid .sw.cur {
+  border-color: var(--sw-bd-cur);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%232c3546' stroke-opacity='0.8' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.4 8.3l3.1 3.1 6-6.8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 13px 13px;
+}
+
+/* --- список версий --- */
+.bklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow: auto;
+}
+
+.bkrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.bkrow:hover {
+  background: var(--panel);
+}
+
+.bkrow .bk-when {
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.bkrow .bk-meta {
+  color: var(--muted);
+  flex: 1;
+}
+
+.bkrow .bk-cur {
+  color: var(--ok-fg);
+  font-size: 11px;
+  border: 1px solid var(--ok-bd);
+  border-radius: 20px;
+  padding: 2px 8px;
+}

@@ -1,0 +1,332 @@
+/* ============================================================
+   board.css — доска: колонка дат, шапки людей, карточки задач,
+   подсветка перегруза, выходных и «сегодня»
+   ============================================================ */
+
+.board {
+  flex: 1;
+  overflow: auto;
+  background: var(--card);
+  position: relative;
+}
+
+.grid {
+  display: flex;
+  min-width: max-content;
+  align-items: flex-start;
+}
+
+.left {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--line2);
+}
+
+.corner {
+  height: var(--headH);
+  min-height: var(--headH);
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  background: var(--card);
+  border-bottom: 2px solid var(--line2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: var(--leftW);
+}
+
+.dates {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-cell {
+  height: var(--rowH);
+  min-height: var(--rowH);
+  width: var(--leftW);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* номер дня и дата: фиксированные колонки грида.
+   Вертикальное центрирование — по центру ячейки, как в остальных строках:
+   иначе в строке «сегодня» двухстрочная дата поднимала номер наверх.
+   Ширины колонок фиксированы, иначе «9» и «10», «ср» и «пн» сдвигают
+   каждую строку на разную величину и колонка выглядит рваной. */
+.date-cell .dwrap {
+  display: grid;
+  grid-template-columns: 22px 60px;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-cell.wk {
+  background: var(--wk-head);
+}
+
+/* сегодня: мягкий фон и акцентная полоска, без жирного шрифта —
+   строка должна читаться, но не перетягивать внимание с карточек */
+.date-cell.is-today {
+  background: var(--today-cell);
+  box-shadow: inset 3px 0 0 var(--today-bar);
+}
+
+.date-cell.is-today .dnum {
+  color: var(--today-fg);
+}
+
+/* дата и подпись «сегодня» — один двухстрочный блок, центрируется в ячейке
+   целиком; номер дня центрируется относительно этого блока (грид с
+   align-items: center). В обычных днях блок из одной строки — тоже по центру. */
+.date-cell .ddate {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-cell .dtoday {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--today-fg);
+  white-space: nowrap;
+}
+
+.date-cell .dnum {
+  font-weight: 700;
+  color: var(--ink);
+  width: 22px;
+  min-width: 22px;
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.cols {
+  display: flex;
+  flex-direction: column;
+}
+
+.heads {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--card);
+}
+
+.head {
+  width: var(--colW);
+  min-width: var(--colW);
+  height: var(--headH);
+  border-bottom: 2px solid var(--line2);
+  border-right: 1px solid var(--line);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  background: var(--card);
+}
+
+.head .pname {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.head .psum {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* задач больше, чем рабочих дней в релизе — повод перераспределить */
+.head .psum.is-over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.bodies {
+  display: flex;
+}
+
+.person-col {
+  width: var(--colW);
+  min-width: var(--colW);
+  position: relative;
+  border-right: 1px solid var(--line);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--rowH) - 1px),
+    var(--line) calc(var(--rowH) - 1px),
+    var(--line) var(--rowH)
+  );
+}
+
+.wk-cell {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--wk-fill);
+  pointer-events: none;
+}
+
+.over {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--over-fill);
+  pointer-events: none;
+}
+
+.over.first {
+  border-top: 1px dashed var(--over-line);
+}
+
+.over::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  background: var(--over-dot);
+}
+
+.today {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid var(--today-line);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* --- карточка задачи --- */
+.card {
+  position: absolute;
+  border-radius: 8px;
+  padding: 5px 7px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid;
+  box-shadow: var(--shadow);
+  font-size: 11px;
+  line-height: 1.25;
+  z-index: 3;
+  user-select: none;
+}
+
+.card.task {
+  background: var(--card-task-bg);
+  border-color: var(--card-task-bd);
+}
+
+.card.vac {
+  background: var(--vac-bg);
+  border-color: var(--vac-bd);
+}
+
+.card.sick {
+  background: var(--sick-bg);
+  border-color: var(--sick-bd);
+}
+
+.card .c-num {
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.card .c-txt {
+  color: var(--card-ink);
+  margin-top: 1px;
+}
+
+.card .c-dur {
+  position: absolute;
+  right: 6px;
+  bottom: 3px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* выходные внутри карточки: работа не идёт, но блок остаётся единым */
+.card .c-off {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--rowH);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--hatch) 0,
+    var(--hatch) 3px,
+    transparent 3px,
+    transparent 7px
+  );
+  background-color: var(--hatch-bg);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card .c-num,
+.card .c-txt {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- пустые состояния: нет сотрудников / нет релиза --- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 100%;
+  color: var(--muted);
+  text-align: center;
+  padding: 30px;
+}
+
+.empty h2 {
+  color: var(--ink);
+  margin: 0;
+  font-size: 18px;
+}
+
+.empty p {
+  margin: 0;
+  max-width: 440px;
+}
+
+/* ряд кнопок в пустом состоянии (раньше стоял inline style) */
+.empty-actions {
+  display: flex;
+  gap: 10px;
+}

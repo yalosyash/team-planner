@@ -1,0 +1,275 @@
+/* ============================================================
+   layout.css — верхняя панель, чип команды, индикатор хранения,
+   переключатель темы, вкладки релизов
+   ============================================================ */
+
+/* topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.brand .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.brand-title {
+  white-space: nowrap;
+}
+
+.team-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.team-chip {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--chip-fg);
+  background: var(--chip-bg);
+  border: 1px dashed var(--chip-bd);
+  border-radius: 999px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-chip:hover {
+  background: var(--chip-hover);
+  border-color: var(--accent);
+}
+
+.team-chip.is-empty {
+  color: var(--muted);
+  background: transparent;
+  border-color: var(--line2);
+  font-weight: 500;
+}
+
+.team-chip.is-empty:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.team-input {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  width: 180px;
+  color: var(--ink);
+  background: var(--input-bg);
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.store {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  padding: 6px 11px 6px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.store .sdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot);
+  flex: none;
+  box-shadow: 0 0 0 3px var(--dot-ring);
+}
+
+.store.on {
+  color: var(--ok-fg);
+  background: var(--ok-bg);
+  border-color: var(--ok-bd);
+}
+
+.store.on .sdot {
+  background: var(--ok-dot);
+  box-shadow: 0 0 0 3px var(--ok-ring);
+}
+
+/* сервер не найден — работаем в браузере: сигналим красным, чтобы заметить сразу */
+.store.warn {
+  color: var(--warn-fg);
+  background: var(--warn-bg);
+  border-color: var(--warn-bd);
+}
+
+.store.warn .sdot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--warn-ring);
+}
+
+.store.err {
+  color: var(--err-fg);
+  background: var(--err-bg);
+  border-color: var(--err-bd);
+  font-weight: 600;
+}
+
+.store.err .sdot {
+  background: var(--err-fg);
+  box-shadow: 0 0 0 3px var(--err-ring);
+}
+
+/* переключатель темы: только иконка, чтобы не растягивать шапку.
+   Иконка показывает, куда переключим, — так же, как подсказка в title:
+   в тёмной теме солнце (→ светлая), в светлой месяц (→ тёмная). */
+.theme-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  flex: none;
+  color: var(--muted);
+}
+
+.theme-btn:hover {
+  color: var(--ink);
+}
+
+.theme-btn .ico {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
+}
+
+.theme-btn .ico-sun {
+  display: none;
+}
+
+[data-theme="dark"] .theme-btn .ico-sun {
+  display: block;
+}
+
+[data-theme="dark"] .theme-btn .ico-moon {
+  display: none;
+}
+
+/* tabs */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 0;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 12px;
+  border: 1px solid var(--line2);
+  border-bottom: none;
+  border-radius: 9px 9px 0 0;
+  background: var(--tab-bg);
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tab:hover {
+  background: var(--tab-hover);
+}
+
+.tab.active {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 -2px 0 var(--accent) inset;
+}
+
+.tab .tnum {
+  font-weight: 700;
+}
+
+.tab .tdate {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.tab .x {
+  opacity: 0.55;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.tab .x:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+
+.tab .edit {
+  opacity: 0.55;
+  font-size: 12px;
+}
+
+.tab .edit:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.addtab {
+  background: var(--card);
+  border: 1px dashed var(--line2);
+  border-radius: 9px 9px 0 0;
+  padding: 7px 14px;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.addtab:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}

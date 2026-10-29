@@ -1,25 +1,62 @@
 /* ============================================================
-   store.js — состояние, сохранение и загрузка данных
-   ============================================================ */
-/* ============ состояние и хранение ============ */
-const KEY = "team-planner-v1";
-let state = { team: "", people: [], releases: [], tasks: [], activeId: null };
-let backend = null; // 'server' | 'browser'
-let writeTimer = null;
-let saving = false,
-  dirtyWhileSaving = false;
+   core/storage.js — состояние приложения и его сохранение.
 
-function valid(s) {
+   Данные живут либо на сервере (data/data.json), либо, если сервера
+   нет, в localStorage браузера. Оба режима пишутся одинаково —
+   через markDirty() с небольшой задержкой.
+   ============================================================ */
+import { addDays, isWorkday } from "./dates.js";
+import { round } from "./util.js";
+import { taskLayout } from "./schedule.js";
+
+const KEY = "team-planner-v1";
+
+export let state = {
+  team: "",
+  people: [],
+  releases: [],
+  tasks: [],
+  activeId: null,
+  theme: null, // 'light' | 'dark' — переезжает вместе с data.json
+};
+
+export let backend = null; // 'server' | 'browser'
+
+/* данные из браузера, отличающиеся от файла: спросим после отрисовки */
+export let pendingLocal = null;
+
+let writeTimer = null;
+let saving = false;
+let dirtyWhileSaving = false;
+
+/* Запись не удалась. Держим это в памяти, чтобы индикатор не стал
+   зелёным просто потому, что сервер ожил, — данные-то всё ещё не
+   на диске. */
+let pendingFailed = false;
+
+export function valid(data) {
   return (
-    s &&
-    Array.isArray(s.people) &&
-    Array.isArray(s.releases) &&
-    Array.isArray(s.tasks)
+    data &&
+    Array.isArray(data.people) &&
+    Array.isArray(data.releases) &&
+    Array.isArray(data.tasks)
   );
 }
 
+/* Заменить состояние целиком (импорт, восстановление версии, выбор
+   браузерной копии). Прямое присваивание импортированной переменной
+   в ES-модулях нельзя, поэтому для этого есть отдельная функция. */
+export function replaceState(next) {
+  state = next;
+  return state;
+}
+
+export function setPendingLocal(next) {
+  pendingLocal = next;
+}
+
 /* Статус места хранения в шапке */
-function setStatus(mode, text) {
+export function setStatus(mode, text) {
   const el = document.getElementById("storeStatus");
   if (!el) return;
   const cls =
@@ -34,23 +71,24 @@ function setStatus(mode, text) {
   el.innerHTML = '<span class="sdot"></span>' + text;
 }
 
-/* Запись не удалась. Держим это в памяти, чтобы индикатор не стал зелёным
-   просто потому, что сервер ожил, — данные-то всё ещё не на диске. */
-let pendingFailed = false;
-
 /* Есть ли правки, которые не дошли до диска. По этому признаку сигнал
-   вкладки (keepalive.js) решает, можно ли вернуть зелёный индикатор:
+   вкладки (core/keepalive.js) решает, можно ли вернуть зелёный индикатор:
    сервер может отвечать, но последняя запись так и не прошла. */
-function hasUnsaved() {
+export function hasUnsaved() {
   return !!writeTimer || saving || dirtyWhileSaving || pendingFailed;
 }
 
-function markDirty() {
+export function markDirty() {
   clearTimeout(writeTimer);
   writeTimer = setTimeout(persist, 500);
 }
 
-function persist() {
+/* Привычный для вызывающего кода синоним: «данные изменились» */
+export function save() {
+  markDirty();
+}
+
+export function persist() {
   if (backend === "server") persistServer();
   else if (backend === "browser") persistBrowser();
 }
@@ -76,7 +114,7 @@ function flushBeacon() {
 
 window.addEventListener("pagehide", flushBeacon);
 
-function persistServer() {
+export function persistServer() {
   if (saving) {
     dirtyWhileSaving = true;
     return;
@@ -129,7 +167,7 @@ function persistBrowser() {
   }
 }
 
-async function initStorage() {
+export async function initStorage() {
   setStatus("", "проверка…");
   let initial = null;
   try {
@@ -181,62 +219,58 @@ async function initStorage() {
   else setStatus("browser", "Хранение: в браузере (сервер не найден)");
 }
 
-let pendingLocal = null;
+/* ============ выборки по данным ============ */
 
-function activeRelease() {
+export function activeRelease() {
   return state.releases.find((r) => r.id === state.activeId) || null;
 }
-function save() {
-  markDirty();
-}
-function tasksOf(personId, releaseId) {
+
+export function tasksOf(personId, releaseId) {
   return state.tasks.filter(
     (t) => t.personId === personId && t.releaseId === releaseId,
   );
 }
+
 /* загрузка дня: сумма долей задач, попавших на этот день */
-function loadAt(personId, rel, dayIdx) {
+export function loadAt(personId, release, dayIndex) {
   let sum = 0;
-  tasksOf(personId, rel.id).forEach((t) => {
-    taskLayout(t, rel.start).forEach((seg) => {
-      if (seg.i === dayIdx) sum += seg.amount;
+  tasksOf(personId, release.id).forEach((task) => {
+    taskLayout(task, release.start).forEach((seg) => {
+      if (seg.i === dayIndex) sum += seg.amount;
     });
   });
   return sum;
 }
 
-/* --- миграция старых данных ---
+/* ============ миграция старых данных ============
    До п.8 поле days считалось в календарных днях. Пересчитываем в рабочие
    так, чтобы карточка заканчивалась там же, где и раньше: суммируем доли
    только по рабочим дням прежнего периода. Отпуск/больничный остаются
    календарными (weekend = true). */
-function migrateTasks(s) {
-  (s.tasks || []).forEach((t) => {
-    if (t.daysMode === "work") return; // уже новая модель
-    const cal = t.type === "vacation" || t.type === "sick";
-    if (cal) {
-      t.weekend = true;
-      t.daysMode = "work";
+export function migrateTasks(data) {
+  (data.tasks || []).forEach((task) => {
+    if (task.daysMode === "work") return; // уже новая модель
+    const calendar = task.type === "vacation" || task.type === "sick";
+    if (calendar) {
+      task.weekend = true;
+      task.daysMode = "work";
       return;
     }
-    const D = Number(t.days) || 0;
-    let wd = 0;
-    for (let i = 0; i < Math.ceil(D); i++) {
-      if (isWorkday(addDays(t.start, i))) wd = round(wd + Math.min(1, D - i));
+    const total = Number(task.days) || 0;
+    let workdays = 0;
+    for (let i = 0; i < Math.ceil(total); i++) {
+      if (isWorkday(addDays(task.start, i)))
+        workdays = round(workdays + Math.min(1, total - i));
     }
-    if (wd > 0) {
-      t.days = wd;
-      t.weekend = false;
+    if (workdays > 0) {
+      task.days = workdays;
+      task.weekend = false;
     } else {
       // задача целиком на выходных — оставляем как календарную
-      t.weekend = true;
+      task.weekend = true;
     }
-    t.daysMode = "work";
+    task.daysMode = "work";
   });
-  s.version = 2;
-  return s;
-}
-/* перевести уже загруженные локальные данные в новую модель */
-function migrateState() {
-  return migrateTasks(state);
+  data.version = 2;
+  return data;
 }

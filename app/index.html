@@ -4,12 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Планировщик загрузки команды</title>
-    <link rel="icon" href="favicon.ico" sizes="16x16 32x32" />
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+
+    <!-- Тему нужно применить до отрисовки страницы, иначе при старте
+         в тёмной теме на мгновение вспыхивает светлый фон. Поэтому это
+         обычный (не module) скрипт: он выполняется сразу, до разбора body.
+         Подробности — в js/init/theme-boot.js. -->
+    <script src="js/init/theme-boot.js"></script>
+    <script src="js/init/env-check.js"></script>
+
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/board.css" />
+    <link rel="stylesheet" href="css/modal.css" />
   </head>
   <body>
-    <div class="topbar">
+    <header class="topbar">
       <div class="brand">
         <span class="dot"></span>
         <span class="brand-title">Планировщик загрузки команды</span>
@@ -19,6 +31,24 @@
         <span id="storeStatus" class="store" title="Где хранятся данные"
           >проверка…</span
         >
+        <button
+          id="btnTheme"
+          class="theme-btn"
+          type="button"
+          title="Тёмная тема"
+          aria-label="Тёмная тема"
+          aria-pressed="false"
+        >
+          <svg class="ico ico-sun" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="3.2" />
+            <path
+              d="M8 1.4v1.6M8 13v1.6M1.4 8h1.6M13 8h1.6M3.3 3.3l1.2 1.2M11.5 11.5l1.2 1.2M12.7 3.3l-1.2 1.2M4.5 11.5l-1.2 1.2"
+            />
+          </svg>
+          <svg class="ico ico-moon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8 5.6 5.6 0 1 0 13.2 9.6Z" />
+          </svg>
+        </button>
         <button id="btnPeople">Сотрудники</button>
         <button id="btnAddTask" class="primary">+ Задача</button>
         <button id="btnExport" title="Сохранить данные в файл">
@@ -45,7 +75,7 @@
           hidden
         />
       </div>
-    </div>
+    </header>
 
     <nav class="tabs" id="tabs"></nav>
 
@@ -55,21 +85,21 @@
     <div class="modal-back" id="mRelease">
       <div class="modal">
         <div class="modal-h">
-          <span id="relTitle">Новый релиз</span
-          ><button class="ghost x" data-close>✕</button>
+          <span id="relTitle">Новый релиз</span>
+          <button class="ghost x" data-close>✕</button>
         </div>
         <div class="modal-b">
-          <label class="field"
-            >Номер релиза
+          <label class="field">
+            Номер релиза
             <input type="text" id="rNum" placeholder="например, 3.14" />
           </label>
           <div class="row2">
-            <label class="field"
-              >Дата начала
+            <label class="field">
+              Дата начала
               <input type="date" id="rStart" />
             </label>
-            <label class="field"
-              >Дата окончания
+            <label class="field">
+              Дата окончания
               <input type="date" id="rEnd" />
             </label>
           </div>
@@ -80,9 +110,7 @@
           <div class="err" id="rErr"></div>
         </div>
         <div class="modal-f">
-          <button class="danger" id="rDelete" style="display: none">
-            Удалить релиз
-          </button>
+          <button class="danger" id="rDelete" hidden>Удалить релиз</button>
           <span class="spacer"></span>
           <button data-close>Отмена</button>
           <button class="primary" id="rSave">Подтвердить</button>
@@ -94,35 +122,35 @@
     <div class="modal-back" id="mTask">
       <div class="modal">
         <div class="modal-h">
-          <span id="taskTitle">Новая задача</span
-          ><button class="ghost x" data-close>✕</button>
+          <span id="taskTitle">Новая задача</span>
+          <button class="ghost x" data-close>✕</button>
         </div>
         <div class="modal-b">
-          <label class="field"
-            >Исполнитель
+          <label class="field">
+            Исполнитель
             <select id="tPerson"></select>
           </label>
           <div class="row2">
-            <label class="field"
-              >Тип
+            <label class="field">
+              Тип
               <select id="tType">
                 <option value="task">Задача</option>
                 <option value="vacation">Отпуск</option>
                 <option value="sick">Больничный</option>
               </select>
             </label>
-            <label class="field"
-              >Номер задачи
+            <label class="field">
+              Номер задачи
               <input type="text" id="tNum" placeholder="SPEKTR-1234" />
             </label>
           </div>
           <div class="row2">
-            <label class="field"
-              >Дата начала работы
+            <label class="field">
+              Дата начала работы
               <input type="date" id="tStart" />
             </label>
-            <label class="field"
-              ><span id="tDaysLabel">Рабочих дней</span>
+            <label class="field">
+              <span id="tDaysLabel">Рабочих дней</span>
               <input type="number" id="tDays" step="0.5" min="0.5" value="1" />
             </label>
           </div>
@@ -130,8 +158,8 @@
             <input type="checkbox" id="tWeekend" />
             <span>Работа в выходные</span>
           </label>
-          <label class="field"
-            >Описание
+          <label class="field">
+            Описание
             <textarea
               id="tDesc"
               rows="1"
@@ -143,9 +171,7 @@
           <div class="err" id="tErr"></div>
         </div>
         <div class="modal-f">
-          <button class="danger" id="tDelete" style="display: none">
-            Удалить
-          </button>
+          <button class="danger" id="tDelete" hidden>Удалить</button>
           <span class="spacer"></span>
           <button data-close>Отмена</button>
           <button class="primary" id="tSave">Добавить</button>
@@ -157,7 +183,8 @@
     <div class="modal-back" id="mPeople">
       <div class="modal">
         <div class="modal-h">
-          Сотрудники отдела<button class="ghost x" data-close>✕</button>
+          Сотрудники отдела
+          <button class="ghost x" data-close>✕</button>
         </div>
         <div class="modal-b">
           <div class="plist" id="plist"></div>
@@ -165,8 +192,8 @@
           <div class="hint">Изменения сохраняются сразу.</div>
         </div>
         <div class="modal-f">
-          <span class="spacer"></span
-          ><button class="primary" data-close>Готово</button>
+          <span class="spacer"></span>
+          <button class="primary" data-close>Готово</button>
         </div>
       </div>
     </div>
@@ -175,32 +202,28 @@
     <div class="modal-back" id="mBackups">
       <div class="modal">
         <div class="modal-h">
-          Версии данных<button class="ghost x" data-close>✕</button>
+          Версии данных
+          <button class="ghost x" data-close>✕</button>
         </div>
         <div class="modal-b">
           <div class="hint" id="bkHint">Загрузка…</div>
           <div class="bklist" id="bklist"></div>
         </div>
         <div class="modal-f">
-          <span class="spacer"></span
-          ><button class="primary" data-close>Закрыть</button>
+          <span class="spacer"></span>
+          <button class="primary" data-close>Закрыть</button>
         </div>
       </div>
     </div>
 
     <div class="toast" id="toast"></div>
 
-    <script src="js/utils.js"></script>
-    <script src="js/store.js"></script>
-    <script src="js/modals.js"></script>
-    <script src="js/release.js"></script>
-    <script src="js/task.js"></script>
-    <script src="js/people.js"></script>
-    <script src="js/tabs.js"></script>
-    <script src="js/board.js"></script>
-    <script src="js/data-io.js"></script>
-    <script src="js/keepalive.js"></script>
-    <script src="js/demo.js"></script>
-    <script src="js/main.js"></script>
+    <noscript>
+      <p class="noscript">
+        Для работы планировщика нужен включённый JavaScript.
+      </p>
+    </noscript>
+
+    <script type="module" src="js/app/main.js"></script>
   </body>
 </html>
