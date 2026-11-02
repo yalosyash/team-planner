@@ -2,25 +2,18 @@
    features/task.js — окно задачи: создание, правка, удаление.
    ============================================================ */
 import { $, esc, toast } from "../core/dom.js";
-import { diffDays, eachDay, isWeekend, nextWorkday } from "../core/dates.js";
-import { activeRelease, loadAt, state, save } from "../core/storage.js";
-import { uid } from "../core/util.js";
-import { taskLayout } from "../core/schedule.js";
+import { activeRelease, state, save } from "../core/storage.js";
+import { normalizeLink, uid } from "../core/util.js";
+import { previewPlacement } from "../core/plan.js";
 import { render } from "../core/render.js";
 import { closeModal, openModal } from "../ui/modal.js";
 
 const DESC_MAX = 500;
 let editingId = null;
 
-/* окно задачи: дата авто-подстановки = первый свободный рабочий день
-   от начала релиза; null — если свободного дня нет */
-function firstFreeWorkday(personId, release) {
-  for (const day of eachDay(release.start, release.end)) {
-    if (isWeekend(day)) continue;
-    if (loadAt(personId, release, diffDays(release.start, day)) < 1e-9)
-      return day;
-  }
-  return null;
+/* отпуск и больничный стоят на своих датах, остальные задачи в очереди */
+function isAbsenceType(type) {
+  return type === "vacation" || type === "sick";
 }
 
 /* описание: подгоняем высоту под текст и обновляем счётчик символов */
@@ -43,23 +36,32 @@ function syncDesc() {
   el.style.height = el.scrollHeight + border + "px";
 }
 
-/* тип задачи управляет подписями и доступностью чекбокса выходных */
+/* тип задачи управляет подписями, датой начала и чекбоксом выходных */
 function syncTaskType() {
   const type = $("#tType").value;
-  const calendar = type === "vacation" || type === "sick";
+  const calendar = isAbsenceType(type);
   $("#tDaysLabel").textContent = calendar ? "Дней" : "Рабочих дней";
   $("#tWeekendWrap").hidden = calendar;
+  $("#tStartWrap").hidden = !calendar;
+  // статус и ссылка — только у обычной задачи: у отпуска и больничного
+  // их нет и в данных
+  $("#tStatusWrap").hidden = calendar;
+  $("#tLinkWrap").hidden = calendar;
   if (calendar) $("#tWeekend").checked = false;
 }
 
-/* дата начала: подставляем первый свободный рабочий день */
-function applyAutoStart() {
-  const release = activeRelease();
-  const personId = $("#tPerson").value;
-  if (!release || !personId) return;
-  const free = firstFreeWorkday(personId, release);
-  // свободного дня нет — предлагаем ближайший рабочий, ошибку покажем при сохранении
-  $("#tStart").value = free || nextWorkday(release.start);
+/* выбранный статус в переключателе (п.4) */
+function readStatus() {
+  const checked = document.querySelector('input[name="tStatus"]:checked');
+  return checked ? checked.value : "";
+}
+
+function setStatus(value) {
+  const want = value === "waiting" || value === "preprod" ? value : "";
+  const radio = document.querySelector(
+    `input[name="tStatus"][value="${want}"]`,
+  );
+  if (radio) radio.checked = true;
 }
 
 export function openTask(id) {
@@ -84,23 +86,19 @@ export function openTask(id) {
     )
     .join("");
   $("#tPerson").value = task ? task.personId : state.people[0].id;
-  $("#tStart").min = release.start;
-  $("#tStart").max = release.end;
   $("#tDays").value = task ? task.days : 1;
   $("#tType").value = task ? task.type || "task" : "task";
   $("#tWeekend").checked = task ? !!task.weekend : false;
-  syncTaskType();
-
-  if (task) {
-    // существующую задачу не сдвигаем
-    $("#tStart").value = task.start;
-  } else {
-    $("#tStart").value = release.start;
-    applyAutoStart();
-  }
-
   $("#tNum").value = task ? task.number || "" : "";
+  $("#tLink").value = task ? task.link || "" : "";
   $("#tDesc").value = task ? task.title || "" : "";
+  setStatus(task ? task.status : "");
+
+  syncTaskType();
+  $("#tStart").min = release.start;
+  $("#tStart").max = release.end;
+  $("#tStart").value = task ? task.start : release.start;
+
   $("#tErr").textContent = "";
   $("#tDelete").hidden = !task;
   $("#tSave").textContent = task ? "Подтвердить" : "Добавить";
@@ -114,50 +112,73 @@ export function openTask(id) {
 function saveTask() {
   const release = activeRelease();
   const personId = $("#tPerson").value;
-  const start = $("#tStart").value;
   const days = parseFloat($("#tDays").value);
   const type = $("#tType").value;
+  const calendarType = isAbsenceType(type);
   // отпуск и больничный всегда календарные — фиксируем это в данных
-  const calendarType = type === "vacation" || type === "sick";
   const weekend = calendarType || $("#tWeekend").checked;
   const number = $("#tNum").value.trim();
   const title = $("#tDesc").value.trim().slice(0, DESC_MAX);
+  // у отпуска и больничного статуса нет — не записываем его даже если
+  // в скрытом переключателе что-то осталось
+  const status = calendarType ? "" : readStatus();
+  // ссылка: пусто → поля нет, без схемы → https://, чужая схема → ошибка
+  const link = calendarType ? "" : normalizeLink($("#tLink").value);
   const err = $("#tErr");
 
   if (!personId) {
     err.textContent = "Выберите исполнителя";
     return;
   }
-  if (!start) {
-    err.textContent = "Укажите дату начала";
-    return;
-  }
   if (!(days > 0)) {
     err.textContent = "Время должно быть больше 0";
     return;
   }
-  if (diffDays(release.start, start) < 0 || diffDays(start, release.end) < 0) {
-    err.textContent = "Дата вне периода релиза";
-    return;
-  }
-  if (!weekend && isWeekend(start)) {
-    err.textContent =
-      "Дата начала — выходной. Включите «Работа в выходные» или выберите рабочий день";
+  if (link === null) {
+    err.textContent = "Ссылка может быть только http:// или https://";
     return;
   }
 
-  const span = taskLayout({ start, days, type, weekend }, release.start);
-  if (!span.length) {
-    err.textContent = "Задача не занимает ни одного дня";
-    return;
+  // дата начала осталась только у отпуска/больничного: они не в очереди
+  let start;
+  if (calendarType) {
+    start = $("#tStart").value;
+    if (!start) {
+      err.textContent = "Укажите дату начала";
+      return;
+    }
+  } else {
+    // у задачи место считается очередью; для существующей задачи
+    // сохраняем прежний start — очередь пересчитается в render()
+    const prev = editingId ? state.tasks.find((x) => x.id === editingId) : null;
+    start = prev ? prev.start : release.start;
   }
-  if (span[span.length - 1].i > diffDays(release.start, release.end)) {
-    err.textContent = "Задача выходит за границы релиза";
-    return;
+
+  // У отпуска/больничного место своё; у задач очередь не может дать
+  // пустую раскладку при днях > 0, но проверка дешёвая — пусть будет.
+  if (!calendarType) {
+    const place = previewPlacement(
+      {
+        id: editingId || "__new",
+        releaseId: release.id,
+        personId,
+        start,
+        days,
+        type,
+        weekend,
+      },
+      release,
+      state.tasks,
+    );
+    if (!place.segs.length) {
+      err.textContent = "Задача не занимает ни одного дня";
+      return;
+    }
   }
 
   if (editingId) {
     const task = state.tasks.find((x) => x.id === editingId);
+    const movedPerson = task.personId !== personId;
     Object.assign(task, {
       personId,
       start,
@@ -165,11 +186,21 @@ function saveTask() {
       type,
       number,
       title,
+      status,
       weekend,
       daysMode: "work",
     });
+    // пустая ссылка — поля в данных нет (как у старых задач)
+    if (link) task.link = link;
+    else delete task.link;
+    // Сменили исполнителя — задача уходит в конец очереди нового
+    // человека: её прежнее место в массиве относилось к другому столбцу.
+    if (movedPerson) {
+      state.tasks = state.tasks.filter((x) => x.id !== task.id).concat(task);
+    }
     toast("Задача обновлена");
   } else {
+    // новая задача — в конец state.tasks, то есть в конец очереди
     state.tasks.push({
       id: uid(),
       releaseId: release.id,
@@ -179,6 +210,9 @@ function saveTask() {
       type,
       number,
       title,
+      status,
+      // пустая строка → поля нет: старая версия и экспорт видят те же данные
+      link: link || undefined,
       weekend,
       daysMode: "work",
     });
@@ -203,16 +237,9 @@ function deleteTask() {
 export function initTask() {
   $("#tDesc").addEventListener("input", syncDesc);
   $("#tPerson").addEventListener("change", () => {
-    applyAutoStart();
     $("#tErr").textContent = "";
   });
   $("#tType").addEventListener("change", syncTaskType);
-  $("#tWeekend").addEventListener("change", () => {
-    // включили работу в выходные — можно ставить на любой день
-    if ($("#tWeekend").checked) return;
-    const day = $("#tStart").value;
-    if (day && isWeekend(day)) $("#tStart").value = nextWorkday(day);
-  });
   $("#tSave").addEventListener("click", saveTask);
   $("#tDelete").addEventListener("click", deleteTask);
 }

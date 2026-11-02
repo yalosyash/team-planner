@@ -141,17 +141,53 @@
             </label>
             <label class="field">
               Номер задачи
-              <input type="text" id="tNum" placeholder="SPEKTR-1234" />
+              <input type="text" id="tNum" placeholder="1234" />
             </label>
+          </div>
+          <label class="field" id="tLinkWrap">
+            Ссылка
+            <input
+              type="text"
+              id="tLink"
+              inputmode="url"
+              autocomplete="off"
+              spellcheck="false"
+              maxlength="500"
+              placeholder="Например, jira.company.ru/browse/1234"
+            />
+          </label>
+          <div class="field" id="tStatusWrap">
+            Статус
+            <div
+              class="seg"
+              id="tStatus"
+              role="radiogroup"
+              aria-label="Статус задачи"
+            >
+              <label class="seg-item">
+                <input type="radio" name="tStatus" value="" />
+                <span>Обычная</span>
+              </label>
+              <label class="seg-item">
+                <input type="radio" name="tStatus" value="waiting" />
+                <span class="seg-ico" aria-hidden="true">!</span>
+                <span>Не передано</span>
+              </label>
+              <label class="seg-item">
+                <input type="radio" name="tStatus" value="preprod" />
+                <span class="seg-ico" aria-hidden="true">✓</span>
+                <span>Готово</span>
+              </label>
+            </div>
           </div>
           <div class="row2">
             <label class="field">
-              Дата начала работы
-              <input type="date" id="tStart" />
-            </label>
-            <label class="field">
               <span id="tDaysLabel">Рабочих дней</span>
               <input type="number" id="tDays" step="0.5" min="0.5" value="1" />
+            </label>
+            <label class="field" id="tStartWrap" hidden>
+              Дата начала
+              <input type="date" id="tStart" />
             </label>
           </div>
           <label class="check" id="tWeekendWrap">

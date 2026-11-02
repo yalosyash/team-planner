@@ -1,9 +1,14 @@
 /* ============================================================
    features/demo.js — демонстрационные данные.
+
+   Демо собрано под очередь (п.1+2): у каждого человека задачи идут
+   подряд от начала релиза, параллельных дорожек нет. Отпуска стоят
+   на своих датах и занимают дни. У Оли задач больше, чем дней в
+   релизе, — видно переполнение и бейдж «за релизом».
    ============================================================ */
 import { toast } from "../core/dom.js";
 import { addDays, addWorkdays, todayISO } from "../core/dates.js";
-import { PALETTE, uid } from "../core/util.js";
+import { PALETTE, normalizeLink, uid } from "../core/util.js";
 import { state, save } from "../core/storage.js";
 import { render } from "../core/render.js";
 
@@ -18,26 +23,133 @@ const NAMES = [
   "Оля",
 ];
 
-/* задача: смещение от начала релиза в рабочих днях, длительность, номер */
+/* задачи по людям: порядок в списке — это порядок очереди.
+   offset нужен только отпуску/больничному: они не встают в очередь. */
 const DEMO_TASKS = [
-  [0, 0, 2, "9523", "Логику создания снэпшота при публикации"],
-  [0, 3, 4, "10725", "Переход на общее окно для WS-V3"],
-  [1, 0, 3, "9712", "Фильтрация и сортировка в корзине"],
-  [1, 3, 1, "10021", "Инструмент управления настройками"],
-  [1, 6, 1.5, "10652", "Адаптивная вёрстка"],
-  [2, 0, 1, "9882", "Дополнить блок технических данных"],
-  [2, 4, 3, "10071", "Контекстный доступ к ширифтам"],
-  [3, 0, 5, "", "", "vacation"],
-  [4, 0, 5, "9218", "Перенести элементы на следующую строку"],
-  [4, 5, 1, "9675", "Проверка выхода за края"],
-  [4, 6, 1.5, "10173", "Переход на единый редактор"],
-  [5, 0, 4, "9381", "Доработать определение навигации ширифтов"],
-  [5, 4, 3, "9382", "Доработать определение навигации ширифтов"],
-  [6, 0, 2.5, "9870", "Поиск команды на вкладке Команды в ЛК"],
-  [6, 5, 3, "", "", "vacation"],
-  [7, 0, 1, "10957", "Починить русский сеансовый PROD"],
-  [7, 0, 1, "10158", "Включить сеансовый PROD"],
-  [7, 2, 5, "10170", "Оптимизация взаимодействия с vectorNetwork"],
+  {
+    person: 0,
+    days: 2,
+    number: "9523",
+    title: "Логику создания снэпшота при публикации",
+    status: "preprod",
+  },
+  {
+    person: 0,
+    days: 4,
+    number: "10725",
+    title: "Переход на общее окно для WS-V3",
+    link: "jira.company.ru/browse/1234",
+  },
+
+  {
+    person: 1,
+    days: 3,
+    number: "9712",
+    title: "Фильтрация и сортировка в корзине",
+    status: "waiting",
+  },
+  {
+    person: 1,
+    days: 1,
+    number: "10021",
+    title: "Инструмент управления настройками",
+  },
+  // две полуторки подряд: вторая начинается в тот же день, где у первой
+  // осталась половина — проверка стыкования внутри дня
+  { person: 1, days: 1.5, number: "10652", title: "Адаптивная вёрстка" },
+  {
+    person: 1,
+    days: 1.5,
+    number: "10173",
+    title: "Переход на единый редактор",
+  },
+
+  {
+    person: 2,
+    days: 1,
+    number: "9882",
+    title: "Дополнить блок технических данных",
+  },
+  {
+    person: 2,
+    days: 3,
+    number: "10071",
+    title: "Контекстный доступ к ширифтам",
+  },
+
+  // Влад: отпуск начинается внутри задачи — она «повисает» через него,
+  // дни отпуска внутри блока заштрихованы (Р2)
+  {
+    person: 3,
+    days: 6,
+    number: "9381",
+    title: "Доработать определение навигации ширифтов",
+    status: "waiting",
+  },
+  { person: 3, days: 2, type: "vacation", offset: 2 },
+  {
+    person: 3,
+    days: 2,
+    number: "9382",
+    title: "Доработать определение навигации ширифтов",
+  },
+
+  {
+    person: 4,
+    days: 5,
+    number: "9218",
+    title: "Перенести элементы на следующую строку",
+  },
+  { person: 4, days: 1, number: "9675", title: "Проверка выхода за края" },
+  {
+    person: 4,
+    days: 1.5,
+    number: "10173",
+    title: "Переход на единый редактор",
+  },
+
+  {
+    person: 5,
+    days: 4,
+    number: "9382",
+    title: "Доработать определение навигации ширифтов",
+  },
+  {
+    person: 5,
+    days: 3,
+    number: "9870",
+    title: "Поиск команды на вкладке Команды в ЛК",
+  },
+
+  {
+    person: 6,
+    days: 2,
+    number: "9871",
+    title: "Поиск команды на вкладке Команды в ЛК",
+  },
+  { person: 6, days: 3, type: "vacation", offset: 2 },
+  { person: 6, days: 2, number: "10653", title: "Адаптивная вёрстка карточек" },
+
+  {
+    person: 7,
+    days: 1,
+    number: "10957",
+    title: "Починить русский сеансовый PROD",
+  },
+  { person: 7, days: 1, number: "10158", title: "Включить сеансовый PROD" },
+  {
+    person: 7,
+    days: 5,
+    number: "10170",
+    title: "Оптимизация взаимодействия с vectorNetwork",
+    status: "preprod",
+  },
+  {
+    person: 7,
+    days: 8,
+    number: "11002",
+    title: "Миграция справочников на новую схему",
+  },
 ];
 
 export function loadDemo() {
@@ -53,27 +165,33 @@ export function loadDemo() {
     id: uid(),
     number: "3.14",
     start,
-    end: addDays(start, 9),
+    end: addDays(start, 18),
   };
   state.releases = [release];
   state.activeId = release.id;
 
-  state.tasks = DEMO_TASKS.map(
-    ([personIndex, offset, days, number, title, type]) => ({
+  state.tasks = DEMO_TASKS.map((item) => {
+    const calendar = item.type === "vacation" || item.type === "sick";
+    return {
       id: uid(),
       releaseId: release.id,
-      personId: state.people[personIndex].id,
-      start: addWorkdays(start, offset),
-      days,
-      type: type || "task",
-      number: number || undefined,
-      title,
+      personId: state.people[item.person].id,
+      // у задачи дату всё равно пересчитает очередь; у отпуска она своя
+      start: calendar ? addWorkdays(start, item.offset || 0) : start,
+      days: item.days,
+      type: item.type || "task",
+      number: item.number || undefined,
+      title: item.title || "",
+      // статус есть только у обычных задач: у отпуска/больничного не пишем
+      status: calendar ? undefined : item.status || undefined,
+      // ссылка — только у обычной задачи; пустая строка → поля нет
+      link: calendar ? undefined : normalizeLink(item.link) || undefined,
       // демо-данные уже в новой модели: дни рабочих задач — рабочие,
       // отпуск и больничный — календарные
-      weekend: type === "vacation" || type === "sick",
+      weekend: calendar,
       daysMode: "work",
-    }),
-  );
+    };
+  });
 
   save();
   render();

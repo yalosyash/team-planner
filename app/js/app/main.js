@@ -16,6 +16,7 @@ import { onRender, render } from "../core/render.js";
 import { initTheme, syncThemeFromState } from "../core/theme.js";
 import { initKeepalive } from "../core/keepalive.js";
 import { initModals } from "../ui/modal.js";
+import { initTooltip } from "../ui/tooltip.js";
 import { renderTeam } from "../ui/team.js";
 import { renderTabs } from "../ui/tabs.js";
 import { renderBoard } from "../ui/board.js";
@@ -45,6 +46,7 @@ function ensureActiveRelease() {
 (async function start() {
   initTheme();
   initModals();
+  initTooltip();
   bindTopbar();
   initPeople();
   initRelease();

@@ -7,7 +7,8 @@
    ============================================================ */
 import { addDays, isWorkday } from "./dates.js";
 import { round } from "./util.js";
-import { taskLayout } from "./schedule.js";
+import { planPerson } from "./plan.js";
+import { isAbsence } from "./schedule.js";
 
 const KEY = "team-planner-v1";
 
@@ -231,22 +232,38 @@ export function tasksOf(personId, releaseId) {
   );
 }
 
-/* загрузка дня: сумма долей задач, попавших на этот день */
-export function loadAt(personId, release, dayIndex) {
-  let sum = 0;
-  tasksOf(personId, release.id).forEach((task) => {
-    taskLayout(task, release.start).forEach((seg) => {
-      if (seg.i === dayIndex) sum += seg.amount;
+/* массив загрузки по дням релиза — считается один раз на человека.
+   Раскладка берётся из очереди (core/plan.js), а не из task.start:
+   после удаления задачи даты пересчитываются, и загрузка должна
+   совпадать с карточками.
+   Отпуск и больничный в загрузку не входят: их дни — это отсутствие,
+   а не работа. Иначе задача, «повисшая» через отпуск, давала бы
+   двойную загрузку и красную подсветку перегруза на ровном месте. */
+export function personLoad(personId, release) {
+  const out = [];
+  planPerson(personId, release, state.tasks).cards.forEach(({ task, segs }) => {
+    if (isAbsence(task)) return;
+    segs.forEach((seg) => {
+      if (seg.i < 0) return;
+      out[seg.i] = round((out[seg.i] || 0) + seg.amount);
     });
   });
-  return sum;
+  return out;
 }
 
 /* ============ миграция старых данных ============
    До п.8 поле days считалось в календарных днях. Пересчитываем в рабочие
    так, чтобы карточка заканчивалась там же, где и раньше: суммируем доли
    только по рабочим дням прежнего периода. Отпуск/больничный остаются
-   календарными (weekend = true). */
+   календарными (weekend = true).
+
+   Затем (п.1+2) фиксируем порядок очереди: задачи каждого человека
+   сортируем по прежнему start. Без этого очередь построилась бы по
+   порядку создания задач, а он у старых данных случайный.
+
+   Миграция идемпотентна и не смотрит на номер версии: старый код
+   безусловно пишет version = 2, поэтому номер может откатиться.
+   Повторная сортировка уже пересчитанных данных даёт тот же порядок. */
 export function migrateTasks(data) {
   (data.tasks || []).forEach((task) => {
     if (task.daysMode === "work") return; // уже новая модель
@@ -271,6 +288,32 @@ export function migrateTasks(data) {
     }
     task.daysMode = "work";
   });
-  data.version = 2;
+
+  sortQueue(data.tasks);
+  data.version = 3;
   return data;
 }
+
+/* Порядок задач человека — это и есть его очередь (Р4). Сортируем только
+   внутри пары «релиз + человек», не меняя общего чередования задач
+   разных людей: каждая группа получает обратно свои же позиции. */
+function sortQueue(tasks) {
+  if (!Array.isArray(tasks)) return;
+  const groups = new Map();
+  tasks.forEach((task, index) => {
+    const key = task.releaseId + "|" + task.personId;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(index);
+  });
+  groups.forEach((slots) => {
+    const list = slots
+      .map((index) => tasks[index])
+      .sort((a, b) =>
+        String(a.start || "").localeCompare(String(b.start || "")),
+      );
+    slots.forEach((index, position) => {
+      tasks[index] = list[position];
+    });
+  });
+}
+

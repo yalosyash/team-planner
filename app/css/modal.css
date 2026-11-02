@@ -82,7 +82,9 @@ label.check input[type="checkbox"] {
   cursor: pointer;
 }
 
-label.field {
+/* поле формы: подпись сверху, контрол снизу. Есть и div.field
+   (переключатель статуса), поэтому селектор по классу, а не по тегу. */
+.field {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -204,6 +206,86 @@ label.field textarea:focus {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+/* --- переключатель статуса задачи (п.4) ---
+   Три сегмента вместо выпадающего списка: статус меняют часто, и лишний
+   клик по списку раздражает. Радиокнопки скрыты, состояние показывает
+   фон сегмента. */
+.seg {
+  display: flex;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--input-bg);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.seg-item {
+  position: relative; /* скрытая радиокнопка позиционируется внутри сегмента */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  border-right: 1px solid var(--line2);
+  white-space: nowrap;
+}
+
+.seg-item:last-child {
+  border-right: 0;
+}
+
+.seg-item input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seg-item:hover {
+  background: var(--panel2);
+}
+
+/* клавиатурный фокус: сегмент виден, даже если радиокнопка скрыта */
+.seg-item:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.seg-item:has(input:checked) {
+  background: var(--accent-btn);
+  color: var(--on-accent);
+}
+
+/* глиф статуса в сегменте и на карточке: «!» в круге / «✓» */
+.seg-item .seg-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--st-wait-glyph);
+  background: var(--st-wait-mark);
+}
+
+.seg-item input[value="preprod"] ~ .seg-ico {
+  color: var(--st-done-glyph);
+  background: var(--st-done-mark);
+}
+
+/* обычный статус — без глифа, подпись с небольшим отступом от края */
+.seg-item:has(input[value=""]) {
+  padding-left: 12px;
 }
 
 /* блок ошибки в модалках: места не занимает, пока текста нет */

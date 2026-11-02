@@ -158,15 +158,27 @@
 .head .psum {
   font-size: 11px;
   color: var(--muted);
-  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* задач больше, чем рабочих дней в релизе — повод перераспределить */
 .head .psum.is-over {
   color: var(--danger);
   font-weight: 600;
+}
+
+/* часть задач не влезла в конец релиза: карточки обрезаны на доске */
+.head .pout {
+  color: var(--danger);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .bodies {
@@ -259,22 +271,86 @@
   border-color: var(--sick-bd);
 }
 
+/* Отпуск и больничный лежат поверх задач: задача, «повисшая» через
+   отпуск, остаётся целым блоком (дни отпуска в ней заштрихованы), а сам
+   отпуск остаётся отдельной карточкой — по нему можно кликнуть и
+   поправить его даты. */
+.card.vac,
+.card.sick {
+  z-index: 4;
+}
+
+/* шапка карточки: номер и количество дней на одной строке.
+   Название идёт отдельным блоком под ними и занимает всю ширину, поэтому
+   длинный текст переносится и обрезается, а не наезжает на «дн» в углу. */
+.card .c-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  /* выше штриховки выходных (.c-off), иначе полосы лягут на цифры */
+  position: relative;
+  z-index: 1;
+}
+
 .card .c-num {
   font-weight: 700;
   font-size: 11px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* номер-ссылка (п.5): выглядит как обычный номер, кликабельность видна
+   при наведении. Цвет текста наследуем от карточки — синяя ссылка на
+   пастельной заливке читалась бы хуже и спорила со статусом. */
+a.c-num {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.c-num:hover {
+  text-decoration: underline;
+}
+
+a.c-num:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
 }
 
 .card .c-txt {
   color: var(--card-ink);
   margin-top: 1px;
+  /* длинные слова (адреса, «vectorNetwork») переносим, а не растягиваем
+     карточку: иначе они вылезают за край и обрезаются без многоточия */
+  overflow-wrap: anywhere;
+}
+
+/* многоточие внизу названия: строку ставит applyHints() по высоте карточки */
+.card .c-txt.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card .c-dur {
-  position: absolute;
-  right: 6px;
-  bottom: 3px;
   font-size: 10px;
   opacity: 0.8;
+  flex: none;
+  white-space: nowrap;
+}
+
+/* правый край верхней строки: «дн» и иконка статуса рядом, одним блоком.
+   Так иконка всегда стоит за «дн» и не спорит с ним за место. */
+.card .c-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
 }
 
 /* выходные внутри карточки: работа не идёт, но блок остаётся единым */
@@ -301,7 +377,196 @@
   z-index: 1;
 }
 
-/* --- пустые состояния: нет сотрудников / нет релиза --- */
+/* задача не влезла в релиз — обрезана по его концу (Р3) */
+.card.is-out {
+  border-style: dashed;
+}
+
+.card.is-out .c-dur {
+  color: var(--danger);
+}
+
+/* --- статусы задачи (п.4) ---
+   Заливка карточки — это цвет сотрудника, заданный инлайном. Чтобы статус
+   не стёр его, второй слой кладём градиентом (background-image), а не
+   background. Число слоёв из одного цвета даёт ровную тонировку поверх
+   заливки, при этом цвет сотрудника остаётся виден. */
+.card.st-waiting {
+  background-image: linear-gradient(var(--st-wait-tint), var(--st-wait-tint));
+  border-color: var(--st-wait-line);
+}
+
+/* «Готово» — задача как бы уже выполнена: иконка и рамка
+   зелёные, заливка подсвечена зелёным. Цвет текста (номера и описания)
+   при этом НЕ меняем: на пастельных цветах сотрудников приглушённый
+   оттенок читается плохо, а статус и так виден по рамке и значку. */
+.card.st-preprod {
+  background-image: linear-gradient(var(--st-done-tint), var(--st-done-tint));
+  border-color: var(--st-done-line);
+}
+
+/* иконка статуса — последняя в верхней строке, сразу за «дн».
+   Кружок с глифом: «!» — не передано, «✓» — готово.
+   Лежит внутри .c-top (position: relative, z-index: 1), поэтому
+   автоматически оказывается выше штриховки выходных. */
+.card .c-st {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--st-wait-glyph);
+  background: var(--st-wait-mark);
+}
+
+.card.st-preprod .c-st {
+  color: var(--st-done-glyph);
+  background: var(--st-done-mark);
+}
+
+/* --- подсказка на обрезанных карточках (п.3) ---
+   position: fixed — доска прокручивается (.board { overflow: auto }),
+   поэтому absolute внутри неё обрезался бы и уезжал при скролле.
+   Цвета берём из --tip-*: в светлой теме плашка светлая, как остальные
+   поверхности, в тёмной — тёмная. */
+.tip {
+  position: fixed;
+  z-index: 70; /* выше доски (≤7) и тоста-плашки, ниже модалок (90) */
+  max-width: 340px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--tip-bg);
+  color: var(--tip-fg);
+  border: 1px solid var(--tip-bd);
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: var(--shadow-pop);
+  overflow-wrap: anywhere;
+  pointer-events: none; /* клик по карточке под подсказкой не перехватываем */
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.tip.show {
+  opacity: 1;
+  transform: none;
+}
+
+/* Подсказка из одной пилюли (статус): своей подложки нет — пилюля уже
+   цветная плашка, белая рамка вокруг неё только дублировала бы форму.
+   Позицию и тень даёт сама пилюля. */
+.tip.is-bare {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  max-width: none;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  overflow-wrap: normal;
+}
+
+/* номер и количество дней — одной строкой по краям, как на карточке */
+.tip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* номер задачи — жирным, без своего цвета: акцент выглядел навязчиво */
+.tip-num {
+  font-weight: 700;
+}
+
+/* длительность — приглушённо, чтобы не спорила с номером и описанием */
+.tip-dur {
+  flex: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tip-txt {
+  margin-top: 3px;
+}
+
+/* короткая подпись без шапки — верхний отступ не нужен */
+.tip-txt:first-child {
+  margin-top: 0;
+}
+
+/* статус, ссылка и пометка «не влезает» — вторичный текст */
+.tip-meta,
+.tip-cut {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Статус в подсказке — пилюлей, как индикатор хранения в шапке (.store):
+   мягкая заливка, цветная рамка, точка и подпись. Вторичный элемент,
+   поэтому мелкий шрифт и обычный вес: акцент остаётся за номером. */
+.tip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 9px 3px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* пилюля-подсказка стоит без подложки — ей нужна лёгкая тень, чтобы
+   читаться поверх карточек и штриховки выходных */
+.tip.is-bare .tip-pill {
+  box-shadow: var(--shadow-pop);
+}
+
+/* подсказка значка статуса состоит из одной пилюли — отступ сверху не нужен */
+.tip-pill:first-child {
+  margin-top: 0;
+}
+
+.tip-pill .tdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* «не передано» — красная, в тон значку «!»: этот статус требует внимания */
+.tip-pill.is-waiting {
+  color: var(--st-wait-pill-fg);
+  background: var(--st-wait-pill-bg);
+  border-color: var(--st-wait-pill-bd);
+}
+
+/* «готова на препрод» — зелёная, с теми же контрастами, что у красной:
+   текст 7.1:1 на своей подложке, рамка 3.4:1 на белой плашке */
+.tip-pill.is-preprod {
+  color: var(--st-done-pill-fg);
+  background: var(--st-done-pill-bg);
+  border-color: var(--st-done-pill-bd);
+}
+
+.tip-cut {
+  color: var(--danger);
+}
+
 .empty {
   display: flex;
   flex-direction: column;
