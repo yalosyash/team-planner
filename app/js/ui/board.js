@@ -153,7 +153,7 @@ function renderBodies(release, days, today) {
         }
       });
 
-      inner += renderCards(person, release, days.length);
+      inner += renderCards(person, release, days.length, todayIndex);
 
       return `<div class="person-col">${inner}</div>`;
     })
@@ -166,7 +166,7 @@ function renderBodies(release, days, today) {
    посчитаны очередью. Полдня — это полдня: если в одном дне стыкуются
    две задачи, они делят день пополам (верхняя половина — первой задаче,
    нижняя — второй), а не сужают весь блок. */
-function renderCards(person, release, dayCount) {
+function renderCards(person, release, dayCount, todayIndex) {
   const { cards, absent } = planPerson(person.id, release, state.tasks);
   const items = cards
     .map((card) => {
@@ -191,6 +191,7 @@ function renderCards(person, release, dayCount) {
         task: card.task,
         start: first.i,
         end: last.i + 1,
+        todayIndex,
         segs,
         // границы блока внутри первого и последнего дня: задача может
         // занимать не целый день, тогда её блок сдвигается и укорачивается
@@ -347,6 +348,19 @@ function cardHTML(item, person, left, width, release, absent) {
   const top = (item.start + from) * ROW_H + 2;
   const bottom = (item.end - 1 + to) * ROW_H - 2;
   const height = Math.max(18, bottom - top);
+  // Продолжаем общую линию внутри карточки на той же высоте.
+  // Её слой ниже текста, а клики по-прежнему получает карточка.
+  const todayTop = item.todayIndex * ROW_H - top - 1;
+  const todayLine = todayTop >= 0 && todayTop < height - 2
+    ? `<span class="c-today" style="top:${todayTop}px" aria-hidden="true"></span>`
+    : "";
+  // overflow:hidden обрезает внутреннюю линию у рамки. Два внешних
+  // отрезка продолжают её поверх боковых рамок, не затрагивая текст.
+  const todayEdges = todayLine
+    ? [left, left + width - 1].map((edge) =>
+        `<span class="today-edge" style="left:${edge}px;top:${item.todayIndex * ROW_H}px" aria-hidden="true"></span>`,
+      ).join("")
+    : "";
 
   // задача не влезла в релиз — обрезана по его концу (Р3).
   // Это не ошибка, поэтому только метка и подсказка.
@@ -376,9 +390,10 @@ function cardHTML(item, person, left, width, release, absent) {
   return `<div class="card ${cls}${status ? " st-" + status : ""}${out ? " is-out" : ""}" data-task="${task.id}" data-hint="${esc(JSON.stringify(hint))}"
     style="left:${left}px;width:${width}px;top:${top}px;height:${height}px;${style}">
   ${hatches}
+  ${todayLine}
   <div class="c-top">${headHTML}<div class="c-right"><div class="c-dur">${taskDur(task)}</div>${mark}</div></div>
   ${sub ? `<div class="c-txt">${esc(sub)}</div>` : ""}
-</div>`;
+</div>${todayEdges}`;
 }
 
 /* статус из данных: пустая строка и любые неизвестные значения — «обычная».

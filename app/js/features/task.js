@@ -43,11 +43,13 @@ function syncTaskType() {
   $("#tDaysLabel").textContent = calendar ? "Дней" : "Рабочих дней";
   $("#tWeekendWrap").hidden = calendar;
   $("#tStartWrap").hidden = !calendar;
-  // статус и ссылка — только у обычной задачи: у отпуска и больничного
-  // их нет и в данных
+  // поля задачи не нужны отпуску и больничному
+  $("#tNumWrap").hidden = calendar;
+  $("#tDescWrap").hidden = calendar;
   $("#tStatusWrap").hidden = calendar;
   $("#tLinkWrap").hidden = calendar;
   if (calendar) $("#tWeekend").checked = false;
+  else syncDesc();
 }
 
 /* выбранный статус в переключателе (п.4) */
@@ -105,7 +107,7 @@ export function openTask(id) {
 
   openModal("#mTask");
   // высоту считаем после открытия: у скрытого поля scrollHeight = 0
-  syncDesc();
+  if (!isAbsenceType($("#tType").value)) syncDesc();
   setTimeout(() => $("#tDays").focus(), 50);
 }
 
@@ -117,8 +119,8 @@ function saveTask() {
   const calendarType = isAbsenceType(type);
   // отпуск и больничный всегда календарные — фиксируем это в данных
   const weekend = calendarType || $("#tWeekend").checked;
-  const number = $("#tNum").value.trim();
-  const title = $("#tDesc").value.trim().slice(0, DESC_MAX);
+  const number = calendarType ? "" : $("#tNum").value.trim();
+  const title = calendarType ? "" : $("#tDesc").value.trim().slice(0, DESC_MAX);
   // у отпуска и больничного статуса нет — не записываем его даже если
   // в скрытом переключателе что-то осталось
   const status = calendarType ? "" : readStatus();

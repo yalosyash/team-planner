@@ -102,6 +102,26 @@ button.ghost:hover {
   background: var(--hover);
 }
 
+/* Сообщение о переходе на очередь не перекрывает строки доски. */
+.queue-notice {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+}
+
+.queue-notice span {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-notice button {
+  flex: none;
+}
+
 /* тост */
 .toast {
   position: fixed;

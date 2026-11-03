@@ -171,6 +171,8 @@ function persistBrowser() {
 export async function initStorage() {
   setStatus("", "проверка…");
   let initial = null;
+  let legacy = false;
+  let localLegacy = false;
   try {
     const r = await fetch("/api/data", { cache: "no-store" });
     if (r.ok) {
@@ -194,7 +196,10 @@ export async function initStorage() {
     } catch (e) {}
   }
 
-  if (initial) state = migrateTasks(initial);
+  if (initial) {
+    legacy = !(initial.version >= 3);
+    state = migrateTasks(initial);
+  }
 
   // предупредить, если в файле и в браузере разные данные
   try {
@@ -202,10 +207,12 @@ export async function initStorage() {
     if (raw) {
       const local = JSON.parse(raw);
       if (valid(local)) {
+        localLegacy = !(local.version >= 3);
         // сравниваем уже в одной модели, иначе миграция даст ложное «разные»
         migrateTasks(local);
         if (!initial) {
           state = local; // файла нет — берём из браузера
+          legacy = localLegacy;
         } else if (
           JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) &&
           local.tasks.length
@@ -218,6 +225,7 @@ export async function initStorage() {
 
   if (backend === "server") setStatus("server", "Сохранено в data.json");
   else setStatus("browser", "Хранение: в браузере (сервер не найден)");
+  return { legacy, localLegacy };
 }
 
 /* ============ выборки по данным ============ */

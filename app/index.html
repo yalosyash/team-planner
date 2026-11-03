@@ -77,6 +77,14 @@
       </div>
     </header>
 
+    <aside class="queue-notice" id="queueNotice" role="status" hidden>
+      <span
+        >Задачи выстроены по порядку с начала релиза — дата в задачах больше не
+        вводится. Прежняя версия данных сохранена в «Версиях».</span
+      >
+      <button type="button">Понятно</button>
+    </aside>
+
     <nav class="tabs" id="tabs"></nav>
 
     <main class="board" id="board"></main>
@@ -139,7 +147,7 @@
                 <option value="sick">Больничный</option>
               </select>
             </label>
-            <label class="field">
+            <label class="field" id="tNumWrap">
               Номер задачи
               <input type="text" id="tNum" placeholder="1234" />
             </label>
@@ -194,7 +202,7 @@
             <input type="checkbox" id="tWeekend" />
             <span>Работа в выходные</span>
           </label>
-          <label class="field">
+          <label class="field" id="tDescWrap">
             Описание
             <textarea
               id="tDesc"
