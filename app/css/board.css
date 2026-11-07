@@ -319,6 +319,24 @@
   white-space: nowrap;
 }
 
+.card .c-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.card .c-label,
+.tip-label {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 2px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
 /* номер-ссылка (п.5): выглядит как обычный номер, кликабельность видна
    при наведении. Цвет текста наследуем от карточки — синяя ссылка на
    пастельной заливке читалась бы хуже и спорила со статусом. */

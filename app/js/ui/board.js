@@ -32,6 +32,7 @@ import { openPeople } from "../features/people.js";
 import { openRelease } from "../features/release.js";
 import { openTask } from "../features/task.js";
 import { loadDemo } from "../features/demo.js";
+import { taskLabels } from "../core/task-labels.js";
 
 export function renderBoard() {
   const board = $("#board");
@@ -308,6 +309,9 @@ function cardHTML(item, person, left, width, release, absent) {
       ? `<a class="c-num" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(head)} — открыть ссылку в новой вкладке">${esc(head)}</a>`
       : `<div class="c-num">${esc(head)}</div>`;
   const sub = task.title || "";
+  const labelsHTML = taskLabels(task)
+    .map((label) => `<span class="c-label">${label}</span>`)
+    .join("");
 
   // дни, когда работа не идёт: выходные и отсутствие человека.
   // Заштриховываем, чтобы было видно, но карточка остаётся одним блоком.
@@ -351,15 +355,19 @@ function cardHTML(item, person, left, width, release, absent) {
   // Продолжаем общую линию внутри карточки на той же высоте.
   // Её слой ниже текста, а клики по-прежнему получает карточка.
   const todayTop = item.todayIndex * ROW_H - top - 1;
-  const todayLine = todayTop >= 0 && todayTop < height - 2
-    ? `<span class="c-today" style="top:${todayTop}px" aria-hidden="true"></span>`
-    : "";
+  const todayLine =
+    todayTop >= 0 && todayTop < height - 2
+      ? `<span class="c-today" style="top:${todayTop}px" aria-hidden="true"></span>`
+      : "";
   // overflow:hidden обрезает внутреннюю линию у рамки. Два внешних
   // отрезка продолжают её поверх боковых рамок, не затрагивая текст.
   const todayEdges = todayLine
-    ? [left, left + width - 1].map((edge) =>
-        `<span class="today-edge" style="left:${edge}px;top:${item.todayIndex * ROW_H}px" aria-hidden="true"></span>`,
-      ).join("")
+    ? [left, left + width - 1]
+        .map(
+          (edge) =>
+            `<span class="today-edge" style="left:${edge}px;top:${item.todayIndex * ROW_H}px" aria-hidden="true"></span>`,
+        )
+        .join("")
     : "";
 
   // задача не влезла в релиз — обрезана по его концу (Р3).
@@ -391,7 +399,7 @@ function cardHTML(item, person, left, width, release, absent) {
     style="left:${left}px;width:${width}px;top:${top}px;height:${height}px;${style}">
   ${hatches}
   ${todayLine}
-  <div class="c-top">${headHTML}<div class="c-right"><div class="c-dur">${taskDur(task)}</div>${mark}</div></div>
+  <div class="c-top"><div class="c-heading">${labelsHTML}${headHTML}</div><div class="c-right"><div class="c-dur">${taskDur(task)}</div>${mark}</div></div>
   ${sub ? `<div class="c-txt">${esc(sub)}</div>` : ""}
 </div>${todayEdges}`;
 }
@@ -421,6 +429,7 @@ function cardHint(item, cls, head) {
     dur: taskDur(task),
   };
   if (cls === "task") {
+    hint.labels = taskLabels(task);
     const status = taskStatus(task);
     if (status) {
       hint.status = STATUS_LABEL[status];

@@ -7,6 +7,7 @@ import { normalizeLink, uid } from "../core/util.js";
 import { previewPlacement } from "../core/plan.js";
 import { render } from "../core/render.js";
 import { closeModal, openModal } from "../ui/modal.js";
+import { taskLabels } from "../core/task-labels.js";
 
 const DESC_MAX = 500;
 let editingId = null;
@@ -48,6 +49,7 @@ function syncTaskType() {
   $("#tDescWrap").hidden = calendar;
   $("#tStatusWrap").hidden = calendar;
   $("#tLinkWrap").hidden = calendar;
+  $("#tLabelsWrap").hidden = calendar;
   if (calendar) $("#tWeekend").checked = false;
   else syncDesc();
 }
@@ -94,6 +96,9 @@ export function openTask(id) {
   $("#tNum").value = task ? task.number || "" : "";
   $("#tLink").value = task ? task.link || "" : "";
   $("#tDesc").value = task ? task.title || "" : "";
+  const labels = taskLabels(task || {});
+  $("#tFE").checked = labels.includes("FE");
+  $("#tBE").checked = labels.includes("BE");
   setStatus(task ? task.status : "");
 
   syncTaskType();
@@ -124,6 +129,10 @@ function saveTask() {
   // у отпуска и больничного статуса нет — не записываем его даже если
   // в скрытом переключателе что-то осталось
   const status = calendarType ? "" : readStatus();
+  const labels = taskLabels({
+    type,
+    labels: [$("#tFE").checked && "FE", $("#tBE").checked && "BE"],
+  });
   // ссылка: пусто → поля нет, без схемы → https://, чужая схема → ошибка
   const link = calendarType ? "" : normalizeLink($("#tLink").value);
   const err = $("#tErr");
@@ -190,6 +199,7 @@ function saveTask() {
       title,
       status,
       weekend,
+      labels,
       daysMode: "work",
     });
     // пустая ссылка — поля в данных нет (как у старых задач)
@@ -215,6 +225,7 @@ function saveTask() {
       status,
       // пустая строка → поля нет: старая версия и экспорт видят те же данные
       link: link || undefined,
+      labels,
       weekend,
       daysMode: "work",
     });

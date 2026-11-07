@@ -16,6 +16,7 @@
    ============================================================ */
 import { onRender } from "../core/render.js";
 import { esc } from "../core/dom.js";
+import { taskLabels } from "../core/task-labels.js";
 
 const DELAY = 400; // мс; столько же просил заказчик в TODO
 const GAP = 8; // отступ плашки от карточки
@@ -52,11 +53,14 @@ function tipHTML(raw) {
     return { html: `<div class="tip-txt">${esc(raw)}</div>`, bare: true };
   }
   const rows = [];
+  const labels = taskLabels(hint)
+    .map((label) => `<span class="tip-label">${label}</span> `)
+    .join("");
   // шапка (номер + дни) есть только у подсказки карточки; у значка
   // статуса в data-tip лежит один статус — плашка будет из одной пилюли
   if (hint.head)
     rows.push(
-      `<div class="tip-head"><span class="tip-num">${esc(hint.head)}</span>` +
+      `<div class="tip-head"><span class="tip-num">${labels}${esc(hint.head)}</span>` +
         `<span class="tip-dur">${esc(hint.dur)}</span></div>`,
     );
   if (hint.title) rows.push(`<div class="tip-txt">${esc(hint.title)}</div>`);

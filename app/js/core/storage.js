@@ -9,6 +9,7 @@ import { addDays, isWorkday } from "./dates.js";
 import { round } from "./util.js";
 import { planPerson } from "./plan.js";
 import { isAbsence } from "./schedule.js";
+import { taskLabels } from "./task-labels.js";
 
 const KEY = "team-planner-v1";
 
@@ -274,6 +275,7 @@ export function personLoad(personId, release) {
    Повторная сортировка уже пересчитанных данных даёт тот же порядок. */
 export function migrateTasks(data) {
   (data.tasks || []).forEach((task) => {
+    task.labels = taskLabels(task);
     if (task.daysMode === "work") return; // уже новая модель
     const calendar = task.type === "vacation" || task.type === "sick";
     if (calendar) {
