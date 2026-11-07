@@ -13,6 +13,67 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--handle) transparent;
+}
+
+/* Общие полосы прокрутки: доска, окна, меню и поля ввода, обе оси.
+   В Chromium/Safari используем скругления и состояния ползунка;
+   стандартные свойства выше остаются запасным вариантом для Firefox. */
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    min-width: 28px;
+    min-height: 28px;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--handle);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-hover);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background-color: var(--scrollbar-active);
+  }
+}
+
+/* В режиме высокой контрастности цвета выбирает система. */
+@media (forced-colors: active) {
+  * {
+    scrollbar-color: auto;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: Canvas;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-color: Canvas;
+    background-color: ButtonText;
+  }
+
+  ::-webkit-scrollbar-thumb:hover,
+  ::-webkit-scrollbar-thumb:active {
+    background-color: Highlight;
+  }
 }
 
 html,

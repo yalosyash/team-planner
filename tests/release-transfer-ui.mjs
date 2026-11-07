@@ -317,10 +317,15 @@ try {
       );
     }
   }
+  // CDP подтверждает сброс до доставки resize в страницу. Дожидаемся
+  // самого события: обработчик меню закрывает их при изменении окна.
+  await evaluate(`globalThis.viewportRestored = new Promise(resolve => {
+    window.addEventListener('resize', () => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    }, { once: true });
+  }); void 0`);
   await cdp("Emulation.clearDeviceMetricsOverride");
-  await evaluate(
-    "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
-  );
+  await evaluate("viewportRestored");
   // Экспорт → удаление → импорт, с фоновым обновлением календаря в предпросмотре.
   await evaluate(
     `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(exported.next)})`,
