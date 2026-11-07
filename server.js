@@ -293,7 +293,7 @@ const server = http.createServer((req, res) => {
   }
 
   // --- запись данных ---
-  if (url === "/api/data" && req.method === "POST") {
+  if ((url === "/api/data" || url === "/api/backup") && req.method === "POST") {
     let body = "";
     let tooBig = false;
     req.on("data", (chunk) => {
@@ -312,6 +312,19 @@ const server = http.createServer((req, res) => {
       try {
         const obj = JSON.parse(body);
         if (!validShape(obj)) throw new Error("bad shape");
+        if (url === "/api/backup") {
+          fs.mkdirSync(BACKUPS, { recursive: true });
+          const name = `data_${stamp()}_release_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.json`;
+          fs.writeFileSync(
+            path.join(BACKUPS, name),
+            JSON.stringify(obj, null, 2),
+            { encoding: "utf8", flag: "wx" },
+          );
+          prune();
+          res.writeHead(200, { "Content-Type": TYPES[".json"] });
+          res.end(JSON.stringify({ ok: true, name }));
+          return;
+        }
         snapshot("auto", false); // версия «до изменения», не чаще раза в минуту
         writeAtomic(DATA, JSON.stringify(obj, null, 2));
         res.writeHead(200, { "Content-Type": TYPES[".json"] });

@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/layout.css" />
     <link rel="stylesheet" href="css/board.css" />
     <link rel="stylesheet" href="css/modal.css" />
+    <link rel="stylesheet" href="css/dropdown.css" />
   </head>
   <body>
     <header class="topbar">
@@ -51,22 +52,58 @@
         </button>
         <button id="btnPeople">Сотрудники</button>
         <button id="btnAddTask" class="primary">+ Задача</button>
-        <button id="btnExport" title="Сохранить данные в файл">
-          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
-            <path
-              d="M8 10.5V2.5M8 2.5 5 5.5M8 2.5l3 3M3 10.5v2.3c0 .4.3.7.7.7h8.6c.4 0 .7-.3.7-.7v-2.3"
-            />
-          </svg>
-          Экспорт
-        </button>
-        <button id="btnImport" title="Загрузить данные из файла">
-          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
-            <path
-              d="M8 2.5v8M8 10.5 5 7.5M8 10.5l3-3M3 10.5v2.3c0 .4.3.7.7.7h8.6c.4 0 .7-.3.7-.7v-2.3"
-            />
-          </svg>
-          Импорт
-        </button>
+        <div class="io-dropdown">
+          <button
+            id="btnExport"
+            aria-expanded="false"
+            aria-controls="exportMenu"
+          >
+            <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M8 10.5V2.5M8 2.5 5 5.5M8 2.5l3 3M3 10.5v2.3c0 .4.3.7.7.7h8.6c.4 0 .7-.3.7-.7v-2.3"
+              />
+            </svg>
+            <span>Экспорт</span>
+            <span class="io-toggle" aria-hidden="true">
+              <svg class="ico" viewBox="0 0 16 16">
+                <path d="M4.5 6.25 8 9.75l3.5-3.5" />
+              </svg>
+            </span>
+          </button>
+          <div class="io-menu" id="exportMenu" hidden>
+            <button id="btnExportAll">Все данные</button>
+            <button id="btnExportRelease">Только релиз</button>
+          </div>
+        </div>
+        <div class="io-dropdown">
+          <button
+            id="btnImport"
+            aria-expanded="false"
+            aria-controls="importMenu"
+          >
+            <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M8 2.5v8M8 10.5 5 7.5M8 10.5l3-3M3 10.5v2.3c0 .4.3.7.7.7h8.6c.4 0 .7-.3.7-.7v-2.3"
+              />
+            </svg>
+            <span>Импорт</span>
+            <span class="io-toggle" aria-hidden="true">
+              <svg class="ico" viewBox="0 0 16 16">
+                <path d="M4.5 6.25 8 9.75l3.5-3.5" />
+              </svg>
+            </span>
+          </button>
+          <div class="io-menu" id="importMenu" hidden>
+            <button id="btnImportAll">Все данные</button>
+            <button id="btnImportRelease">Только релиз</button>
+          </div>
+        </div>
+        <input
+          type="file"
+          id="fileReleaseImport"
+          accept="application/json,.json"
+          hidden
+        />
         <button id="btnBackups">Версии</button>
         <input
           type="file"
@@ -85,7 +122,12 @@
       <button type="button">Понятно</button>
     </aside>
 
-    <aside class="queue-notice" id="calendarNotice" role="status" hidden></aside>
+    <aside
+      class="queue-notice"
+      id="calendarNotice"
+      role="status"
+      hidden
+    ></aside>
 
     <nav class="tabs" id="tabs"></nav>
 
@@ -154,19 +196,6 @@
               <input type="text" id="tNum" placeholder="1234" />
             </label>
           </div>
-          <div class="field" id="tLabelsWrap">
-            Метки задачи
-            <div class="seg" role="group" aria-label="Метки задачи">
-              <label class="seg-item">
-                <input type="checkbox" id="tFE" />
-                <span>FE</span>
-              </label>
-              <label class="seg-item">
-                <input type="checkbox" id="tBE" />
-                <span>BE</span>
-              </label>
-            </div>
-          </div>
           <label class="field" id="tLinkWrap">
             Ссылка
             <input
@@ -179,28 +208,43 @@
               placeholder="Например, jira.company.ru/browse/1234"
             />
           </label>
-          <div class="field" id="tStatusWrap">
-            Статус
-            <div
-              class="seg"
-              id="tStatus"
-              role="radiogroup"
-              aria-label="Статус задачи"
-            >
-              <label class="seg-item">
-                <input type="radio" name="tStatus" value="" />
-                <span>Обычная</span>
-              </label>
-              <label class="seg-item">
-                <input type="radio" name="tStatus" value="waiting" />
-                <span class="seg-ico" aria-hidden="true">!</span>
-                <span>Не передано</span>
-              </label>
-              <label class="seg-item">
-                <input type="radio" name="tStatus" value="preprod" />
-                <span class="seg-ico" aria-hidden="true">✓</span>
-                <span>Готово</span>
-              </label>
+          <div class="task-status-labels">
+            <div class="field" id="tStatusWrap">
+              Статус
+              <div
+                class="seg"
+                id="tStatus"
+                role="radiogroup"
+                aria-label="Статус задачи"
+              >
+                <label class="seg-item">
+                  <input type="radio" name="tStatus" value="" />
+                  <span>Обычная</span>
+                </label>
+                <label class="seg-item">
+                  <input type="radio" name="tStatus" value="waiting" />
+                  <span class="seg-ico" aria-hidden="true">!</span>
+                  <span>Не передано</span>
+                </label>
+                <label class="seg-item">
+                  <input type="radio" name="tStatus" value="preprod" />
+                  <span class="seg-ico" aria-hidden="true">✓</span>
+                  <span>Готово</span>
+                </label>
+              </div>
+            </div>
+            <div class="field" id="tLabelsWrap">
+              Метки задачи
+              <div class="seg" role="group" aria-label="Метки задачи">
+                <label class="seg-item">
+                  <input type="checkbox" id="tFE" />
+                  <span>FE</span>
+                </label>
+                <label class="seg-item">
+                  <input type="checkbox" id="tBE" />
+                  <span>BE</span>
+                </label>
+              </div>
             </div>
           </div>
           <div class="row2">
@@ -275,6 +319,72 @@
       </div>
     </div>
 
+    <div class="modal-back" id="mReleaseExport">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reTitle"
+      >
+        <div class="modal-h">
+          <span id="reTitle">Экспорт релиза</span
+          ><button class="ghost x" data-close aria-label="Закрыть">✕</button>
+        </div>
+        <div class="modal-b">
+          <label class="field"
+            >Какой релиз выгрузить?<select id="reRelease">
+              <button type="button">
+                <selectedcontent></selectedcontent>
+              </button></select
+          ></label>
+          <div class="hint" id="reHint">
+            В файл войдут задачи выбранного релиза и сотрудники с задачами.
+          </div>
+        </div>
+        <div class="modal-f">
+          <button data-close>Отмена</button><span class="spacer"></span
+          ><button class="primary" id="reExport">Экспортировать</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-back" id="mReleaseImport">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="riTitle"
+      >
+        <div class="modal-h">
+          <span id="riTitle">Импорт релиза</span
+          ><button class="ghost x" data-close aria-label="Закрыть">✕</button>
+        </div>
+        <div class="modal-b">
+          <div id="riSummary"></div>
+          <div id="riWarning" role="status"></div>
+          <div class="hint">
+            Сопоставьте сотрудников. Совпадение имени — только подсказка. Имена,
+            цвета и порядок существующих сотрудников сохранятся.
+          </div>
+          <div id="riPeople" class="transfer-people"></div>
+          <label id="riConfirmWrap"
+            ><input type="checkbox" id="riConfirm" /><span>Подтверждаю замену
+            указанного релиза целиком, включая удаление отсутствующих в файле
+            задач. Остальные релизы сохраняются.</span></label
+          >
+          <button id="riDownloadCurrent">
+            Сохранить текущие данные отдельно
+          </button>
+          <div class="hint">
+            Перед импортом автоматически создаётся резервная копия в «Версиях».
+          </div>
+          <div id="riError" role="alert"></div>
+        </div>
+        <div class="modal-f">
+          <button data-close>Отмена</button><span class="spacer"></span
+          ><button class="primary" id="riApply">Добавить релиз</button>
+        </div>
+      </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <noscript>

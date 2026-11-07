@@ -5,6 +5,8 @@
 
 /* topbar */
 .topbar {
+  flex: none;
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -14,6 +16,9 @@
 }
 
 .brand {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  max-width: 100%;
   font-weight: 700;
   font-size: 15px;
   display: flex;
@@ -31,7 +36,8 @@
 }
 
 .brand-title {
-  white-space: nowrap;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .team-wrap {
@@ -86,6 +92,7 @@
 }
 
 .actions {
+  max-width: 100%;
   margin-left: auto;
   display: flex;
   gap: 8px;

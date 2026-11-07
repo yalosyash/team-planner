@@ -2,6 +2,11 @@
    features/data-io.js — экспорт, импорт и версии данных.
    ============================================================ */
 import { $, toast } from "../core/dom.js";
+import {
+  initReleaseTransfer,
+  BACKUP_KEY,
+  downloadJson,
+} from "./release-transfer.js";
 import { todayISO } from "../core/dates.js";
 import {
   backend,
@@ -58,6 +63,34 @@ async function openBackups() {
   list.innerHTML = "";
 
   if (backend !== "server") {
+    const raw = localStorage.getItem(BACKUP_KEY);
+    if (raw) {
+      hint.textContent =
+        "Резервная копия перед последним импортом релиза (все данные).";
+      const restore = document.createElement("button");
+      restore.textContent = "Восстановить";
+      restore.onclick = () => {
+        if (
+          !confirm(
+            "Восстановить все данные из копии перед импортом? Текущие данные будут скачаны отдельным файлом.",
+          )
+        )
+          return;
+        try {
+          const restored = migrateTasks(JSON.parse(raw));
+          downloadJson(state, "team-planner-before-restore.json");
+          replaceState(restored);
+          syncThemeFromState();
+          save();
+          render();
+          closeModal("#mBackups");
+        } catch {
+          alert("Не удалось прочитать резервную копию");
+        }
+      };
+      list.append(restore);
+      return;
+    }
     hint.textContent =
       "Версии доступны только при запуске через start.bat (сервер не найден).";
     return;
@@ -126,8 +159,81 @@ async function restoreBackup(name) {
 }
 
 export function initDataIo() {
-  $("#btnExport").addEventListener("click", exportJson);
-  $("#btnImport").addEventListener("click", () => $("#fileImport").click());
+  initReleaseTransfer();
+  initIoMenus();
+  $("#btnExportAll").addEventListener("click", exportJson);
+  $("#btnImportAll").addEventListener("click", () => $("#fileImport").click());
   $("#fileImport").addEventListener("change", importJson);
   $("#btnBackups").addEventListener("click", openBackups);
+}
+
+function initIoMenus() {
+  const dropdowns = [...document.querySelectorAll(".io-dropdown")];
+  function closeAll() {
+    dropdowns.forEach((dropdown) => {
+      dropdown.querySelector(".io-menu").hidden = true;
+      dropdown
+        .querySelector("[aria-expanded]")
+        .setAttribute("aria-expanded", "false");
+    });
+  }
+  dropdowns.forEach((dropdown) => {
+    const trigger = dropdown.querySelector("[aria-expanded]");
+    const menu = dropdown.querySelector(".io-menu");
+    const items = [...menu.querySelectorAll("button")];
+    function placeMenu() {
+      menu.style.transform = "";
+      const bounds = menu.getBoundingClientRect();
+      const shift =
+        bounds.left < 8
+          ? 8 - bounds.left
+          : bounds.right > window.innerWidth - 8
+            ? window.innerWidth - 8 - bounds.right
+            : 0;
+      menu.style.transform = `translateX(${shift}px)`;
+    }
+    trigger.addEventListener("click", () => {
+      const opening = menu.hidden;
+      closeAll();
+      menu.hidden = !opening;
+      trigger.setAttribute("aria-expanded", String(opening));
+      if (opening) placeMenu();
+    });
+    trigger.addEventListener("keydown", (event) => {
+      if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+      event.preventDefault();
+      closeAll();
+      menu.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+      placeMenu();
+      items[event.key === "ArrowDown" ? 0 : items.length - 1].focus();
+    });
+    menu.addEventListener("click", (event) => {
+      if (event.target.closest("button")) closeAll();
+    });
+    menu.addEventListener("keydown", (event) => {
+      const index = items.indexOf(document.activeElement);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAll();
+        trigger.focus();
+      } else if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+        event.preventDefault();
+        items[
+          (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) %
+            items.length
+        ].focus();
+      }
+    });
+    dropdown.addEventListener("focusout", (event) => {
+      if (!dropdown.contains(event.relatedTarget)) closeAll();
+    });
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".io-dropdown")) closeAll();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAll();
+  });
+  window.addEventListener("resize", closeAll);
 }

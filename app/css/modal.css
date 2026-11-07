@@ -3,6 +3,41 @@
    палитра цветов, список версий
    ============================================================ */
 
+.transfer-people {
+  display: grid;
+  gap: 12px;
+}
+.transfer-people label {
+  display: grid;
+  gap: 6px;
+}
+.transfer-people select {
+  width: 100%;
+  min-width: 0;
+}
+#riConfirmWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+#riConfirmWrap[hidden] {
+  display: none;
+}
+#riConfirm {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  margin-top: max(0px, calc((1lh - 15px) / 2));
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+#riWarning,
+#riError {
+  color: var(--danger, #c43c3c);
+}
+
 .modal-back {
   position: fixed;
   inset: 0;
@@ -103,15 +138,19 @@ label.field textarea {
   background: var(--input-bg);
 }
 
+label.field input,
+label.field select {
+  height: var(--control-height);
+}
 /* описание задачи: растёт по содержимому без внутреннего скролла,
    при нехватке места скроллится само окно (.modal-b) */
 label.field textarea {
   resize: none;
   flex: none;
-  min-height: 34px;
+  min-height: var(--control-height);
   max-height: none;
   overflow: hidden;
-  line-height: 1.4;
+  line-height: calc(var(--control-height) - 18px);
   overflow-wrap: anywhere;
 }
 
@@ -125,59 +164,6 @@ label.field .counter {
 
 label.field .counter.full {
   color: var(--danger);
-}
-
-/* селекты: свой шеврон вместо системной стрелки, отступ от края как у текста.
-   Цвет стрелки зашит в data-URL (в SVG внутри url() переменные не работают),
-   поэтому для тёмной темы он переопределяется отдельным правилом ниже. */
-select,
-label.field select {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  padding-right: 36px;
-  background-color: var(--input-bg);
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b7488' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px 16px;
-  cursor: pointer;
-}
-
-select:hover,
-label.field select:hover {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233b4254' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
-}
-
-select:focus,
-label.field select:focus {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233b6ef6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
-}
-
-[data-theme="dark"] select,
-[data-theme="dark"] label.field select {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa4b6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
-}
-
-[data-theme="dark"] select:hover,
-[data-theme="dark"] label.field select:hover {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23e3e8f1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
-}
-
-[data-theme="dark"] select:focus,
-[data-theme="dark"] label.field select:focus {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236f9bff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
-}
-
-select::-ms-expand {
-  display: none;
-}
-
-/* выпадающий список рисует система: в тёмной теме просим её о тёмных
-   пунктах, иначе белое меню бьёт по глазам */
-[data-theme="dark"] option {
-  background: var(--card);
-  color: var(--ink);
 }
 
 /* единый вид фокуса для всех полей приложения — только синяя рамка, без внешнего кольца */
@@ -212,11 +198,22 @@ label.field textarea:focus {
   grid-template-columns: 1fr;
 }
 
+.task-status-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.task-status-labels:has(#tStatusWrap[hidden]):has(#tLabelsWrap[hidden]) {
+  display: none;
+}
 /* --- переключатель статуса задачи (п.4) ---
    Три сегмента вместо выпадающего списка: статус меняют часто, и лишний
    клик по списку раздражает. Радиокнопки скрыты, состояние показывает
    фон сегмента. */
 .seg {
+  height: var(--control-height);
   display: flex;
   border: 1px solid var(--line2);
   border-radius: 8px;

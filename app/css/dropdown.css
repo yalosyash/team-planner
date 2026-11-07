@@ -1,0 +1,194 @@
+/* Общий стиль меню и полей выбора, включая динамические списки импорта. */
+:root {
+  --dropdown-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23636c80' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+  --dropdown-radius: 8px;
+  --dropdown-item-padding: 4px 8px;
+}
+
+[data-theme="dark"] {
+  --dropdown-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa4b6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+select,
+label.field select,
+.io-dropdown > button {
+  font: inherit;
+  color: var(--ink);
+  background-color: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: var(--dropdown-radius);
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+select,
+label.field select {
+  appearance: none;
+  padding-block: 8px;
+  line-height: 1.35;
+  block-size: var(--control-height);
+  min-width: 0;
+  padding-right: 38px;
+  background-image: var(--dropdown-chevron), linear-gradient(var(--line2), var(--line2));
+  background-repeat: no-repeat;
+  background-position: right 8px center, right 28px center;
+  background-size: 14px 14px, 1px calc(100% - 14px);
+}
+
+select:hover,
+label.field select:hover,
+.io-dropdown > button:hover {
+  background-color: var(--panel2);
+}
+
+select:focus,
+label.field select:focus,
+.io-dropdown > button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+option {
+  color: var(--ink);
+  background: var(--card);
+}
+
+#reRelease option,
+#reRelease selectedcontent {
+  font-weight: 400;
+}
+
+#reRelease option strong,
+#reRelease selectedcontent strong {
+  font-weight: 700;
+}
+
+#reRelease option {
+  gap: 0;
+}
+
+#reRelease > button,
+#reRelease > button:hover {
+  all: unset;
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: inherit;
+}
+
+.io-dropdown {
+  position: relative;
+}
+
+.io-dropdown > button {
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.io-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  flex: none;
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid var(--line2);
+}
+
+.io-toggle .ico {
+  transition: transform 0.15s;
+}
+
+.io-dropdown > button[aria-expanded="true"] .io-toggle .ico {
+  transform: rotate(180deg);
+}
+
+.io-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  min-width: 132px;
+  padding: 3px;
+  display: grid;
+  gap: 1px;
+  background: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: var(--dropdown-radius);
+  box-shadow: var(--shadow-pop);
+}
+
+.io-menu button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: var(--dropdown-item-padding);
+  border-color: transparent;
+  border-radius: calc(var(--dropdown-radius) - 3px);
+}
+
+.io-menu button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--panel2);
+}
+
+/* В браузерах с настраиваемым select само раскрытое меню тоже оформлено
+   как меню действий. В остальных сохраняется системное управление выбором. */
+@supports (appearance: base-select) {
+  select,
+  label.field select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+
+  select::picker-icon {
+    display: none;
+  }
+
+  select::picker(select) {
+    margin-block: 6px;
+    padding: 3px;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--line2);
+    border-radius: var(--dropdown-radius);
+    box-shadow: var(--shadow-pop);
+    max-height: min(320px, 50vh);
+    overflow: auto;
+    font: inherit;
+  }
+
+  select option {
+    padding: var(--dropdown-item-padding);
+    border: 1px solid transparent;
+    border-radius: calc(var(--dropdown-radius) - 3px);
+    min-block-size: 0;
+    gap: 6px;
+    overflow-wrap: anywhere;
+  }
+
+  select option + option {
+    margin-top: 1px;
+  }
+
+  select option:hover,
+  select option:focus {
+    background: var(--panel2);
+  }
+
+  select option:checked {
+    background: var(--panel2);
+    font-weight: 600;
+  }
+
+  select option::checkmark {
+    display: none;
+  }
+}
