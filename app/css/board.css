@@ -326,6 +326,25 @@
   min-width: 0;
 }
 
+/* Полдня — 19px: оставляем место для всей шапки, не расширяя карточку. */
+.card.is-compact {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.card.is-compact .c-top {
+  height: 100%;
+  align-items: center;
+}
+
+.card.is-compact .c-heading {
+  align-items: center;
+}
+
+.card .c-txt[hidden] {
+  display: none;
+}
+
 .card .c-label,
 .tip-label {
   flex: none;

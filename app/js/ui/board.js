@@ -475,12 +475,18 @@ function bindCards() {
    иначе их обрезка осталась бы без объяснения. */
 function applyHints() {
   document.querySelectorAll(".card").forEach((card) => {
+    // Высоту на сетке не меняем: две задачи на полдня должны стыковаться.
+    card.classList.toggle("is-compact", card.getBoundingClientRect().height < 30);
     const txt = card.querySelector(".c-txt");
     const clippedV = clipTitle(card, txt);
-    const clippedH = card.scrollWidth > card.clientWidth + 1;
+    const num = card.querySelector(".c-num");
+    const clippedH =
+      (num && num.scrollWidth > num.clientWidth + 1) ||
+      card.scrollWidth > card.clientWidth + 1;
     const hint = card.dataset.hint;
     if (hint && (clippedV || clippedH || card.classList.contains("is-out")))
       card.dataset.tip = hint;
+    else delete card.dataset.tip;
   });
 }
 /* Обрезаем название по высоте карточки и ставим многоточие: без этого
@@ -493,15 +499,23 @@ function applyHints() {
    полностью скрытый заголовок остался бы без подсказки. */
 function clipTitle(card, txt) {
   if (!txt) return false;
+  txt.hidden = false;
+  txt.classList.remove("clamp");
+  txt.style.removeProperty("-webkit-line-clamp");
   const top = card.querySelector(".c-top");
   const cs = getComputedStyle(txt);
+  const cardStyle = getComputedStyle(card);
   const lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.25;
   const room =
     card.getBoundingClientRect().bottom -
-    1 - // рамка
-    5 - // нижний отступ карточки
+    parseFloat(cardStyle.borderBottomWidth) -
+    parseFloat(cardStyle.paddingBottom) -
     top.getBoundingClientRect().bottom -
-    1; // отступ «margin-top» перед названием
+    parseFloat(cs.marginTop);
+  if (room < lineH) {
+    txt.hidden = true;
+    return true;
+  }
   const lines = Math.max(1, Math.floor(room / lineH));
   const fits =
     room >= lineH && txt.getBoundingClientRect().height <= lines * lineH + 1;
