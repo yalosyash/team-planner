@@ -34,7 +34,6 @@
   --faint: #6a7385;
   --handle: #6f7889;
   --scrollbar-hover: #505a6b;
-  --scrollbar-active: #606b7c;
   /* рамка плашек палитры: на светлой пастели нужна тёмная, в тёмной теме — светлая */
   --sw-bd: rgba(20, 30, 60, 0.12);
   --sw-bd-cur: rgba(20, 30, 60, 0.32);
@@ -164,7 +163,6 @@
   --faint: #8d97a8;
   --handle: #96a0b1;
   --scrollbar-hover: #b0bacb;
-  --scrollbar-active: #7d8798;
   --sw-bd: rgba(255, 255, 255, 0.18);
   --sw-bd-cur: rgba(255, 255, 255, 0.5);
 

@@ -49,9 +49,6 @@
     background-color: var(--scrollbar-hover);
   }
 
-  ::-webkit-scrollbar-thumb:active {
-    background-color: var(--scrollbar-active);
-  }
 }
 
 /* В режиме высокой контрастности цвета выбирает система. */
@@ -70,8 +67,7 @@
     background-color: ButtonText;
   }
 
-  ::-webkit-scrollbar-thumb:hover,
-  ::-webkit-scrollbar-thumb:active {
+  ::-webkit-scrollbar-thumb:hover {
     background-color: Highlight;
   }
 }
