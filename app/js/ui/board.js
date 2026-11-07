@@ -6,7 +6,7 @@
    ============================================================ */
 import { $, esc } from "../core/dom.js";
 import {
-  isWeekend,
+  isWorkday,
   addDays,
   eachDay,
   diffDays,
@@ -75,7 +75,7 @@ export function renderBoard() {
 function renderDates(days, today) {
   const cells = days
     .map((day, index) => {
-      const weekend = [0, 6].includes(parseISO(day).getDay()) ? " wk" : "";
+      const weekend = !isWorkday(day) ? " wk" : "";
       const isToday = day === today;
       const title = isToday ? ' title="Сегодня"' : "";
       const todayMark = isToday ? '<span class="dtoday">сегодня</span>' : "";
@@ -138,7 +138,7 @@ function renderBodies(release, days, today) {
       const load = personLoad(person.id, release);
 
       days.forEach((day, index) => {
-        if ([0, 6].includes(parseISO(day).getDay()))
+        if (!isWorkday(day))
           inner += `<div class="wk-cell" style="top:${index * ROW_H}px;height:${ROW_H}px"></div>`;
       });
 
@@ -326,7 +326,7 @@ function cardHTML(item, person, left, width, release, absent) {
       // у отпуска и больничного свои дни не штрихуем: это и есть его блок
       if (!isAbsence(task) && absent && absent.has(day)) return true;
       if (task.weekend) return false;
-      return isWeekend(day);
+      return !isWorkday(day);
     };
     let runStart = -1;
     for (let i = first; i <= last + 1; i++) {

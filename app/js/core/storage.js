@@ -1,3 +1,4 @@
+import { bindCalendar } from "./calendar.js";
 /* ============================================================
    core/storage.js — состояние приложения и его сохранение.
 
@@ -5,7 +6,7 @@
    нет, в localStorage браузера. Оба режима пишутся одинаково —
    через markDirty() с небольшой задержкой.
    ============================================================ */
-import { addDays, isWorkday } from "./dates.js";
+import { addDays, isWeekend } from "./dates.js";
 import { round } from "./util.js";
 import { planPerson } from "./plan.js";
 import { isAbsence } from "./schedule.js";
@@ -21,6 +22,8 @@ export let state = {
   activeId: null,
   theme: null, // 'light' | 'dark' — переезжает вместе с data.json
 };
+
+bindCalendar(() => state.calendar);
 
 export let backend = null; // 'server' | 'browser'
 
@@ -215,8 +218,8 @@ export async function initStorage() {
           state = local; // файла нет — берём из браузера
           legacy = localLegacy;
         } else if (
-          JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) &&
-          local.tasks.length
+          ((JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) && local.tasks.length) ||
+            JSON.stringify(local.calendar || {}) !== JSON.stringify(state.calendar || {}))
         ) {
           pendingLocal = local; // разные — спросим после отрисовки
         }
@@ -286,7 +289,7 @@ export function migrateTasks(data) {
     const total = Number(task.days) || 0;
     let workdays = 0;
     for (let i = 0; i < Math.ceil(total); i++) {
-      if (isWorkday(addDays(task.start, i)))
+      if (!isWeekend(addDays(task.start, i)))
         workdays = round(workdays + Math.min(1, total - i));
     }
     if (workdays > 0) {

@@ -1,3 +1,4 @@
+import { initCalendar } from "../features/calendar.js";
 /* ============================================================
    app/main.js — точка входа: собирает приложение и запускает его.
 
@@ -57,6 +58,7 @@ function ensureActiveRelease() {
   let { legacy, localLegacy } = await initStorage();
   syncThemeFromState();
   ensureActiveRelease();
+  initCalendar();
   render();
 
   // если в браузере есть данные, отличающиеся от файла — предложим выбрать

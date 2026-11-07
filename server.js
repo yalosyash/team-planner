@@ -214,6 +214,68 @@ const server = http.createServer((req, res) => {
   const url = decodeURIComponent((req.url || "").split("?")[0]);
   if (url.startsWith("/api/")) cancelStop(); // вкладка жива — не выключаемся
 
+  // Фиксированный источник: браузеру не требуется CORS у внешнего API.
+  if (url === "/api/calendar" && req.method === "GET") {
+    const year = new URL(req.url, "http://localhost").searchParams.get("year");
+    if (
+      !/^\d{4}$/.test(year || "") ||
+      Number(year) < 1900 ||
+      Number(year) > 2100
+    ) {
+      res.writeHead(400);
+      res.end("Invalid year");
+      return;
+    }
+    const upstream = require("https").get(
+      `https://isdayoff.ru/api/getdata?year=${year}&cc=ru&pre=1`,
+      { headers: { "User-Agent": "isdayoff-nodejs-app/team-planner" } },
+      (reply) => {
+        let body = "";
+        reply.on("data", (chunk) => {
+          body += chunk;
+          if (body.length > 1024)
+            upstream.destroy(new Error("Response too large"));
+        });
+        reply.on("error", () => {
+          if (!res.writableEnded) {
+            res.writeHead(502);
+            res.end();
+          }
+        });
+        reply.on("end", () => {
+          if (res.writableEnded) return;
+          body = body.trim();
+          const count =
+            new Date(Date.UTC(Number(year), 1, 29)).getUTCMonth() === 1
+              ? 366
+              : 365;
+          if (
+            reply.statusCode !== 200 ||
+            body.length !== count ||
+            !/^[012]+$/.test(body)
+          ) {
+            res.writeHead(502);
+            res.end("Calendar unavailable");
+            return;
+          }
+          res.writeHead(200, {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store",
+          });
+          res.end(body);
+        });
+      },
+    );
+    upstream.setTimeout(12000, () => upstream.destroy(new Error("Timeout")));
+    upstream.on("error", () => {
+      if (!res.writableEnded) {
+        res.writeHead(502);
+        res.end("Calendar unavailable");
+      }
+    });
+    return;
+  }
+
   // --- чтение данных ---
   if (url === "/api/data" && req.method === "GET") {
     let data = null;

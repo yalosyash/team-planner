@@ -1,3 +1,4 @@
+import { calendarWorkday } from "./calendar.js";
 /* ============================================================
    core/dates.js — даты в формате YYYY-MM-DD и рабочие дни.
    Все функции работают со строками, а не с Date: так проще
@@ -36,13 +37,13 @@ export function isWeekend(value) {
 }
 
 export function isWorkday(value) {
-  return !isWeekend(value);
+  return calendarWorkday(value);
 }
 
 /* ближайший рабочий день вперёд (если день и так рабочий — он же) */
 export function nextWorkday(value) {
   let day = value;
-  while (isWeekend(day)) day = addDays(day, 1);
+  while (!isWorkday(day)) day = addDays(day, 1);
   return day;
 }
 
