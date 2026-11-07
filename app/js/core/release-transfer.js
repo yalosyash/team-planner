@@ -109,7 +109,10 @@ export function exportRelease(data, releaseId) {
   };
   // Снимок последней передачи позволяет обнаружить локальные изменения при возврате.
   exchange.base ||= current;
-  exchange.sent = [...(exchange.sent || []), { transferId: packet.transferId, snapshot: current }].slice(-20);
+  exchange.sent = [
+    ...(exchange.sent || []),
+    { transferId: packet.transferId, snapshot: current },
+  ].slice(-20);
   exchange.parents = [...new Set([...packet.parents, packet.transferId])];
   return { next, packet };
 }
@@ -167,12 +170,29 @@ export function validatePacket(packet, checkBase = true) {
       fail();
   }
   if (checkBase) {
-    if (!packet.base || !packet.base.release || !Array.isArray(packet.base.tasks)) fail();
-    const basePeople = [...new Set(packet.base.tasks.map(t => t?.personId))];
-    validatePacket({ ...packet, release: { ...packet.base.release, id: packet.origin },
-      tasks: packet.base.tasks.map(t => ({ ...t, releaseId: packet.origin })),
-      people: basePeople.map(personId => ({ id: personId, name: "", color: "#000000" })),
-    }, false);
+    if (
+      !packet.base ||
+      !packet.base.release ||
+      !Array.isArray(packet.base.tasks)
+    )
+      fail();
+    const basePeople = [...new Set(packet.base.tasks.map((t) => t?.personId))];
+    validatePacket(
+      {
+        ...packet,
+        release: { ...packet.base.release, id: packet.origin },
+        tasks: packet.base.tasks.map((t) => ({
+          ...t,
+          releaseId: packet.origin,
+        })),
+        people: basePeople.map((personId) => ({
+          id: personId,
+          name: "",
+          color: "#000000",
+        })),
+      },
+      false,
+    );
   }
   return packet;
 }
@@ -190,18 +210,23 @@ export function previewRelease(data, packet) {
     tasks: packet.tasks.map(({ releaseId, ...t }) => t),
   };
   const old = new Map((current?.tasks || []).map((t) => [t.id, t]));
-  const position = tasks => {
+  const position = (tasks) => {
     const counts = new Map();
-    return new Map(tasks.map(t => {
-      const index = counts.get(t.personId) || 0;
-      counts.set(t.personId, index + 1);
-      return [t.id, index];
-    }));
+    return new Map(
+      tasks.map((t) => {
+        const index = counts.get(t.personId) || 0;
+        counts.set(t.personId, index + 1);
+        return [t.id, index];
+      }),
+    );
   };
-  const oldOrder = position(current?.tasks || []), newOrder = position(incoming.tasks);
+  const oldOrder = position(current?.tasks || []),
+    newOrder = position(incoming.tasks);
   const added = incoming.tasks.filter((t) => !old.has(t.id)).length;
   const changed = incoming.tasks.filter(
-    (t) => old.has(t.id) && (!same(old.get(t.id), t) || oldOrder.get(t.id) !== newOrder.get(t.id)),
+    (t) =>
+      old.has(t.id) &&
+      (!same(old.get(t.id), t) || oldOrder.get(t.id) !== newOrder.get(t.id)),
   ).length;
   const deleted = [...old.keys()].filter(
     (k) => !incoming.tasks.some((t) => t.id === k),
@@ -213,9 +238,19 @@ export function previewRelease(data, packet) {
     !!release?.exchange?.lastImport &&
     !packet.parents.includes(release.exchange.lastImport);
   const conflict =
-    !!current && !same(current, packet.base) && !same(current, incoming) &&
-    !(release.exchange.lastImport && packet.parents.includes(release.exchange.lastImport) && same(current, release.exchange.base)) &&
-    !release.exchange.sent?.some(sent => packet.parents.includes(sent.transferId) && same(current, sent.snapshot));
+    !!current &&
+    !same(current, packet.base) &&
+    !same(current, incoming) &&
+    !(
+      release.exchange.lastImport &&
+      packet.parents.includes(release.exchange.lastImport) &&
+      same(current, release.exchange.base)
+    ) &&
+    !release.exchange.sent?.some(
+      (sent) =>
+        packet.parents.includes(sent.transferId) &&
+        same(current, sent.snapshot),
+    );
   return {
     release,
     incoming,

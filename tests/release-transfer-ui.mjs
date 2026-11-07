@@ -50,12 +50,29 @@ let backup = null;
 let missingVersion = false;
 const server = http.createServer(async (req, res) => {
   if (req.url === "/api/backups") {
-    res.end(JSON.stringify({ backups: [{ name: "test.json", at: "07.11.2026", size: 100, releases: 1, tasks: 1 }] }));
+    res.end(
+      JSON.stringify({
+        backups: [
+          {
+            name: "test.json",
+            at: "07.11.2026",
+            size: 100,
+            releases: 1,
+            tasks: 1,
+          },
+        ],
+      }),
+    );
     return;
   }
   if (req.url === "/api/restore") {
-    res.end(JSON.stringify(missingVersion ? { ok: false, error: "not found" }
-      : { ok: true, data: structuredClone(source), revision: "restored" }));
+    res.end(
+      JSON.stringify(
+        missingVersion
+          ? { ok: false, error: "not found" }
+          : { ok: true, data: structuredClone(source), revision: "restored" },
+      ),
+    );
     return;
   }
   if (req.url === "/api/data") {
@@ -203,24 +220,79 @@ try {
   await waitFor(
     'document.querySelector("#storeStatus")?.textContent.includes("Сохранено")',
   );
+  // Длинный релиз: шапка закреплена сверху, даты — слева.
+  const scrollLayout = await evaluate(`await (async () => {
+    const storage = await import('/js/core/storage.js');
+    const { renderBoard } = await import('/js/ui/board.js');
+    const previous = storage.state;
+    const people = Array.from({ length: 12 }, (_, i) => ({
+      id: 'p' + i, name: 'Сотрудник ' + i, color: '#abcdef'
+    }));
+    storage.replaceState({ ...previous, people, tasks: [], activeId: 'scroll',
+      releases: [{ id: 'scroll', number: 'scroll', start: '2026-01-01', end: '2026-04-30' }] });
+    renderBoard();
+    const board = document.querySelector('#board');
+    board.scrollTop = 900;
+    board.scrollLeft = 300;
+    await new Promise(requestAnimationFrame);
+    const top = board.getBoundingClientRect().top;
+    const heads = document.querySelector('.heads').getBoundingClientRect();
+    const corner = document.querySelector('.corner').getBoundingClientRect();
+    const date = document.querySelector('.date-cell').getBoundingClientRect();
+    const column = document.querySelector('.person-col').getBoundingClientRect();
+    const result = { top, headsTop: heads.top, cornerTop: corner.top,
+      cornerLeft: corner.left, boardLeft: board.getBoundingClientRect().left,
+      headsLeft: heads.left, dateTop: date.top, columnHeight: column.height,
+      datesHeight: document.querySelector('.dates').getBoundingClientRect().height,
+      scrollTop: board.scrollTop, scrollLeft: board.scrollLeft };
+    storage.replaceState(previous);
+    renderBoard();
+    board.scrollTop = board.scrollLeft = 0;
+    return result;
+  })()`);
+  assert.ok(
+    scrollLayout.scrollTop > 0 && scrollLayout.scrollLeft > 0,
+    JSON.stringify(scrollLayout),
+  );
+  assert.ok(Math.abs(scrollLayout.headsTop - scrollLayout.top) < 1);
+  assert.ok(Math.abs(scrollLayout.cornerTop - scrollLayout.top) < 1);
+  assert.ok(Math.abs(scrollLayout.cornerLeft - scrollLayout.boardLeft) < 1);
+  assert.ok(scrollLayout.headsLeft < scrollLayout.cornerLeft);
+  assert.ok(scrollLayout.dateTop < scrollLayout.top);
+  assert.ok(Math.abs(scrollLayout.columnHeight - scrollLayout.datesHeight) < 1);
   await evaluate('document.querySelector("#mTask").classList.add("open")');
   for (const theme of ["light", "dark"]) {
-    await evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`);
-    const heights = await evaluate(`['#tNum', '#tType', '#tPerson', '#tLink', '#tDays', '#tDesc', '#tStatus', '#tLabelsWrap .seg'].map(selector =>
+    await evaluate(
+      `document.documentElement.dataset.theme = ${JSON.stringify(theme)}`,
+    );
+    const heights =
+      await evaluate(`['#tNum', '#tType', '#tPerson', '#tLink', '#tDays', '#tDesc', '#tStatus', '#tLabelsWrap .seg'].map(selector =>
       document.querySelector(selector).getBoundingClientRect().height)`);
     for (const height of heights.slice(1)) {
-      assert.ok(Math.abs(height - heights[0]) < 1,
-        `Select/input heights must match in ${theme}: ${heights}`);
+      assert.ok(
+        Math.abs(height - heights[0]) < 1,
+        `Select/input heights must match in ${theme}: ${heights}`,
+      );
     }
   }
-  await evaluate('document.documentElement.dataset.theme = "light"; document.querySelector("#mTask").classList.remove("open")');
+  await evaluate(
+    'document.documentElement.dataset.theme = "light"; document.querySelector("#mTask").classList.remove("open")',
+  );
   // Шапка переносит действия целиком и не перекрывает название команды.
   for (const width of [1440, 1130, 1129, 1024, 768, 560, 375, 320]) {
     await cdp("Emulation.setDeviceMetricsOverride", {
-      width, height: 900, deviceScaleFactor: 1, mobile: false,
+      width,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
     });
-    for (const name of ["Тест", "Очень длинное название команды для проверки переноса"]) {
-      await evaluate(`document.querySelector(".team-chip").textContent = ${JSON.stringify(name)}`);
+    for (const name of [
+      "Тест",
+      "Очень длинное название команды для проверки переноса",
+    ]) {
+      await evaluate(
+        `document.querySelector(".team-chip").textContent = ${JSON.stringify(name)}`,
+      );
       const layout = await evaluate(`(() => {
         const brand = document.querySelector(".brand").getBoundingClientRect();
         const actions = document.querySelector(".actions").getBoundingClientRect();
@@ -233,14 +305,26 @@ try {
             .every(r => r.left >= 0 && r.right <= innerWidth),
         };
       })()`);
-      assert.equal(layout.overlap, false, `Header overlap at ${width}px (${name})`);
-      assert.equal(layout.fits, true, `Header overflow at ${width}px (${name})`);
+      assert.equal(
+        layout.overlap,
+        false,
+        `Header overlap at ${width}px (${name})`,
+      );
+      assert.equal(
+        layout.fits,
+        true,
+        `Header overflow at ${width}px (${name})`,
+      );
     }
   }
   await cdp("Emulation.clearDeviceMetricsOverride");
-  await evaluate("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
+  await evaluate(
+    "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
+  );
   // Экспорт → удаление → импорт, с фоновым обновлением календаря в предпросмотре.
-  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(exported.next)})`);
+  await evaluate(
+    `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(exported.next)})`,
+  );
   await evaluate(`{
     const { state } = await import('/js/core/storage.js');
     state.releases = []; state.tasks = []; state.activeId = null;
@@ -252,45 +336,108 @@ try {
     document.querySelector('#riPeople select').value = 'remote';
     document.querySelector('#riApply').click();
   }`);
-  await waitFor('!document.querySelector("#mReleaseImport").classList.contains("open")');
-  assert.equal(await evaluate('(await import("/js/core/storage.js")).state.releases.length'), 1);
-  console.log('Deleted release import with calendar update: passed');
-  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`);
+  await waitFor(
+    '!document.querySelector("#mReleaseImport").classList.contains("open")',
+  );
+  assert.equal(
+    await evaluate(
+      '(await import("/js/core/storage.js")).state.releases.length',
+    ),
+    1,
+  );
+  console.log("Deleted release import with calendar update: passed");
+  await evaluate(
+    `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`,
+  );
   // Два меню вместо четырёх кнопок, закрытие снаружи и выбор релиза.
-  assert.equal(await evaluate('document.querySelectorAll(".io-dropdown").length'), 2);
+  assert.equal(
+    await evaluate('document.querySelectorAll(".io-dropdown").length'),
+    2,
+  );
   await evaluate('document.querySelector("#btnExport").click()');
-  assert.equal(await evaluate('document.querySelector("#exportMenu").hidden'), false);
+  assert.equal(
+    await evaluate('document.querySelector("#exportMenu").hidden'),
+    false,
+  );
   await evaluate('document.querySelector("#btnImport").click()');
-  assert.equal(await evaluate('document.querySelector("#exportMenu").hidden'), true);
-  assert.equal(await evaluate('document.querySelector("#importMenu").hidden'), false);
-  await evaluate('document.body.click()');
-  assert.equal(await evaluate('document.querySelector("#importMenu").hidden'), true);
-  await evaluate('document.querySelector("#btnExport").click(); document.querySelector("#btnExportRelease").click()');
-  assert.equal(await evaluate('document.querySelector("#reExport").disabled'), true);
-  assert.equal(await evaluate('document.querySelector("#reRelease").disabled'), true);
-  await evaluate('document.querySelector("#mReleaseExport [data-close]").click()');
-  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify({ ...source, releases: [...source.releases, { ...source.releases[0], id: "second", number: "2.0" }], activeId: "r" })})`);
+  assert.equal(
+    await evaluate('document.querySelector("#exportMenu").hidden'),
+    true,
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#importMenu").hidden'),
+    false,
+  );
+  await evaluate("document.body.click()");
+  assert.equal(
+    await evaluate('document.querySelector("#importMenu").hidden'),
+    true,
+  );
+  await evaluate(
+    'document.querySelector("#btnExport").click(); document.querySelector("#btnExportRelease").click()',
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#reExport").disabled'),
+    true,
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#reRelease").disabled'),
+    true,
+  );
+  await evaluate(
+    'document.querySelector("#mReleaseExport [data-close]").click()',
+  );
+  await evaluate(
+    `(await import('/js/core/storage.js')).replaceState(${JSON.stringify({ ...source, releases: [...source.releases, { ...source.releases[0], id: "second", number: "2.0" }], activeId: "r" })})`,
+  );
   await evaluate(`globalThis.downloads = []; HTMLAnchorElement.prototype.click = function() {
     fetch(this.href).then(r => r.json()).then(data => downloads.push(data));
   }`);
-  await evaluate('document.querySelector("#btnExport").click(); document.querySelector("#btnExportRelease").click()');
-  assert.equal(await evaluate('document.querySelector("#reRelease").options.length'), 2);
-  assert.equal(await evaluate('document.querySelector("#reRelease").disabled'), false);
-  await evaluate('document.querySelector("#reRelease").value = "second"; document.querySelector("#reExport").click()');
-  await waitFor('downloads.length === 1');
-  assert.equal(await evaluate('downloads[0].release.number'), "2.0");
-  assert.equal(await evaluate('downloads[0].tasks.length'), 0);
-  assert.equal(await evaluate('(await import("/js/core/storage.js")).state.activeId'), "r");
-  assert.equal(await evaluate('document.querySelector("#mReleaseExport").classList.contains("open")'), false);
-  await evaluate('document.querySelector("#btnExport").click(); document.querySelector("#btnExportAll").click()');
-  await waitFor('downloads.length === 2');
-  assert.equal(await evaluate('downloads[1].releases.length'), 2);
+  await evaluate(
+    'document.querySelector("#btnExport").click(); document.querySelector("#btnExportRelease").click()',
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#reRelease").options.length'),
+    2,
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#reRelease").disabled'),
+    false,
+  );
+  await evaluate(
+    'document.querySelector("#reRelease").value = "second"; document.querySelector("#reExport").click()',
+  );
+  await waitFor("downloads.length === 1");
+  assert.equal(await evaluate("downloads[0].release.number"), "2.0");
+  assert.equal(await evaluate("downloads[0].tasks.length"), 0);
+  assert.equal(
+    await evaluate('(await import("/js/core/storage.js")).state.activeId'),
+    "r",
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector("#mReleaseExport").classList.contains("open")',
+    ),
+    false,
+  );
+  await evaluate(
+    'document.querySelector("#btnExport").click(); document.querySelector("#btnExportAll").click()',
+  );
+  await waitFor("downloads.length === 2");
+  assert.equal(await evaluate("downloads[1].releases.length"), 2);
   await evaluate(`globalThis.fileClicks = []; for (const selector of ['#fileImport', '#fileReleaseImport']) {
     document.querySelector(selector).addEventListener('click', e => { e.preventDefault(); fileClicks.push(selector); });
   }`);
-  await evaluate('document.querySelector("#btnImport").click(); document.querySelector("#btnImportAll").click(); document.querySelector("#btnImport").click(); document.querySelector("#btnImportRelease").click()');
-  assert.deepEqual(await evaluate('fileClicks'), ['#fileImport', '#fileReleaseImport']);
-  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`);
+  await evaluate(
+    'document.querySelector("#btnImport").click(); document.querySelector("#btnImportAll").click(); document.querySelector("#btnImport").click(); document.querySelector("#btnImportRelease").click()',
+  );
+  assert.deepEqual(await evaluate("fileClicks"), [
+    "#fileImport",
+    "#fileReleaseImport",
+  ]);
+  await evaluate(
+    `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`,
+  );
   async function loadFile(packet) {
     await evaluate(`(() => {
       const input = document.querySelector('#fileReleaseImport');
@@ -368,8 +515,13 @@ try {
     true,
   );
   // Даже принудительный вызов обработчика не должен включать кнопку в finally.
-  await evaluate('document.querySelector("#riApply").dispatchEvent(new Event("click"))');
-  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
+  await evaluate(
+    'document.querySelector("#riApply").dispatchEvent(new Event("click"))',
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#riApply").disabled'),
+    true,
+  );
   await evaluate(
     'document.querySelector("#mReleaseImport [data-close]").click()',
   );
@@ -390,16 +542,31 @@ try {
     /параллельные/,
   );
   await evaluate('document.querySelector("#riApply").click()');
-  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
-  assert.equal(await evaluate('document.querySelector("#riError").textContent'), "");
-  assert.deepEqual(await evaluate(`(() => {
+  assert.equal(
+    await evaluate('document.querySelector("#riApply").disabled'),
+    true,
+  );
+  assert.equal(
+    await evaluate('document.querySelector("#riError").textContent'),
+    "",
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
     const style = getComputedStyle(document.querySelector('#riApply'));
     return [style.cursor, style.opacity];
-  })()`), ['not-allowed', '0.45']);
+  })()`),
+    ["not-allowed", "0.45"],
+  );
   await evaluate('document.querySelector("#riConfirm").click()');
-  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), false);
+  assert.equal(
+    await evaluate('document.querySelector("#riApply").disabled'),
+    false,
+  );
   await evaluate('document.querySelector("#riConfirm").click()');
-  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
+  assert.equal(
+    await evaluate('document.querySelector("#riApply").disabled'),
+    true,
+  );
   await evaluate(
     'document.querySelector("#riConfirm").click(); document.querySelector("#riApply").click()',
   );
@@ -428,32 +595,69 @@ try {
     true,
   );
   // Восстановление новой версии после отката на старый файл доступно в UI.
-  await evaluate('document.querySelector("#mReleaseImport [data-close]").click()');
-  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`);
+  await evaluate(
+    'document.querySelector("#mReleaseImport [data-close]").click()',
+  );
+  await evaluate(
+    `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`,
+  );
   for (const packet of [changed.packet, exported.packet, changed.packet]) {
     await loadFile(packet);
-    const needsConfirmation = await evaluate('!document.querySelector("#riConfirmWrap").hidden');
-    if (needsConfirmation) await evaluate('document.querySelector("#riConfirm").click()');
-    assert.equal(await evaluate('document.querySelector("#riApply").disabled'), false);
+    const needsConfirmation = await evaluate(
+      '!document.querySelector("#riConfirmWrap").hidden',
+    );
+    if (needsConfirmation)
+      await evaluate('document.querySelector("#riConfirm").click()');
+    assert.equal(
+      await evaluate('document.querySelector("#riApply").disabled'),
+      false,
+    );
     await evaluate('document.querySelector("#riApply").click()');
-    await waitFor('!document.querySelector("#mReleaseImport").classList.contains("open")');
+    await waitFor(
+      '!document.querySelector("#mReleaseImport").classList.contains("open")',
+    );
   }
-  assert.equal(await evaluate('(await import("/js/core/storage.js")).state.tasks[0].title'), "Новое описание");
+  assert.equal(
+    await evaluate(
+      '(await import("/js/core/storage.js")).state.tasks[0].title',
+    ),
+    "Новое описание",
+  );
   await loadFile(changed.packet);
-  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
-  await evaluate('document.querySelector("#mReleaseImport [data-close]").click(); window.confirm = () => true');
-  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`);
+  assert.equal(
+    await evaluate('document.querySelector("#riApply").disabled'),
+    true,
+  );
+  await evaluate(
+    'document.querySelector("#mReleaseImport [data-close]").click(); window.confirm = () => true',
+  );
+  await evaluate(
+    `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`,
+  );
   await evaluate('document.querySelector("#btnBackups").click()');
   await waitFor('document.querySelector("[data-restore]")');
-  assert.ok(await evaluate('document.querySelector("#bklist").textContent.includes("Релизов: 1") && document.querySelector("#bklist").textContent.includes("Задач: 1")'));
+  assert.ok(
+    await evaluate(
+      'document.querySelector("#bklist").textContent.includes("Релизов: 1") && document.querySelector("#bklist").textContent.includes("Задач: 1")',
+    ),
+  );
   await evaluate('document.querySelector("[data-restore]").click()');
-  await waitFor('!document.querySelector("#mBackups").classList.contains("open")');
-  assert.equal(await evaluate('(await import("/js/core/storage.js")).state.releases.length'), 1);
+  await waitFor(
+    '!document.querySelector("#mBackups").classList.contains("open")',
+  );
+  assert.equal(
+    await evaluate(
+      '(await import("/js/core/storage.js")).state.releases.length',
+    ),
+    1,
+  );
   missingVersion = true;
   await evaluate('document.querySelector("#btnBackups").click()');
   await waitFor('document.querySelector("[data-restore]")');
   await evaluate('document.querySelector("[data-restore]").click()');
-  await waitFor('document.querySelector("#bkHint").textContent.includes("Список обновлён")');
+  await waitFor(
+    'document.querySelector("#bkHint").textContent.includes("Список обновлён")',
+  );
   assert.deepEqual(errors, []);
   console.log(
     "Release transfer UI: all checks passed (Chrome, desktop/mobile, cancellation, backup failure, conflict and repeat)",

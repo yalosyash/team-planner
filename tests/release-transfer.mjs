@@ -60,7 +60,11 @@ const newerSource = clone(exported.next);
 newerSource.tasks[0].title = "Новая правка";
 const newerFile = exportRelease(newerSource, "r").packet;
 let restored = empty();
-restored = applyRelease(restored, newerFile, new Map([[file.people[0].id, "new"]]));
+restored = applyRelease(
+  restored,
+  newerFile,
+  new Map([[file.people[0].id, "new"]]),
+);
 const restoreMapping = new Map([[file.people[0].id, restored.people[0].id]]);
 assert.equal(previewRelease(restored, newerFile).repeated, true);
 restored = applyRelease(restored, file, restoreMapping);
@@ -233,29 +237,54 @@ assert.throws(() =>
 );
 // Несколько экспортов без промежуточного возврата не создают ложный конфликт.
 let sender = clone(exported.next);
-let receiver = applyRelease(empty(), file, new Map([[file.people[0].id, "new"]]));
+let receiver = applyRelease(
+  empty(),
+  file,
+  new Map([[file.people[0].id, "new"]]),
+);
 sender.tasks[0].title = "Первая отправка";
-let sent = exportRelease(sender, "r"); sender = sent.next;
-receiver = applyRelease(receiver, sent.packet, new Map([[file.people[0].id, receiver.people[0].id]]));
+let sent = exportRelease(sender, "r");
+sender = sent.next;
+receiver = applyRelease(
+  receiver,
+  sent.packet,
+  new Map([[file.people[0].id, receiver.people[0].id]]),
+);
 sender.tasks[0].title = "Вторая отправка";
-sent = exportRelease(sender, "r"); sender = sent.next;
+sent = exportRelease(sender, "r");
+sender = sent.next;
 assert.equal(previewRelease(receiver, sent.packet).conflict, false);
-receiver = applyRelease(receiver, sent.packet, new Map([[file.people[0].id, receiver.people[0].id]]));
+receiver = applyRelease(
+  receiver,
+  sent.packet,
+  new Map([[file.people[0].id, receiver.people[0].id]]),
+);
 receiver.tasks[0].title = "Возврат после двух отправок";
-let back = exportRelease(receiver, receiver.activeId); receiver = back.next;
+let back = exportRelease(receiver, receiver.activeId);
+receiver = back.next;
 assert.equal(previewRelease(sender, back.packet).conflict, false);
 receiver.tasks[0].title = "Повторный экспорт с дополнительной правкой";
 back = exportRelease(receiver, receiver.activeId);
 assert.equal(previewRelease(sender, back.packet).conflict, false);
-const brokenBase = clone(file); brokenBase.base.tasks[0].days = -1;
+const brokenBase = clone(file);
+brokenBase.base.tasks[0].days = -1;
 assert.throws(() => validatePacket(brokenBase));
 // Пустой релиз также переносится.
 const noTasks = exportRelease({ ...empty(), releases: [release] }, "r");
-assert.equal(applyRelease(empty(), noTasks.packet, new Map()).releases.length, 1);
+assert.equal(
+  applyRelease(empty(), noTasks.packet, new Map()).releases.length,
+  1,
+);
 // Календарь и вычисляемые даты не сбрасывают предпросмотр; реальные правки — да.
-const revisionData = { ...empty(), releases: [clone(release)], tasks: [clone(task)] };
+const revisionData = {
+  ...empty(),
+  releases: [clone(release)],
+  tasks: [clone(task)],
+};
 const revision = importRevision(revisionData);
-revisionData.calendar = { years: { 2026: { days: "0".repeat(365), updatedAt: "new" } } };
+revisionData.calendar = {
+  years: { 2026: { days: "0".repeat(365), updatedAt: "new" } },
+};
 revisionData.tasks[0].start = "2026-11-10";
 revisionData.activeId = "r";
 revisionData.theme = "dark";

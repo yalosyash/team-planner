@@ -13,7 +13,9 @@
 .grid {
   display: flex;
   min-width: max-content;
-  align-items: flex-start;
+  /* Колонки должны занимать всю высоту дат, чтобы sticky-шапка
+     оставалась внутри таблицы на всём протяжении прокрутки. */
+  align-items: stretch;
 }
 
 .left {
@@ -183,20 +185,13 @@
 
 .bodies {
   display: flex;
+  flex: 1;
 }
 
 .person-col {
   width: var(--colW);
   min-width: var(--colW);
   position: relative;
-  border-right: 1px solid var(--line);
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(var(--rowH) - 1px),
-    var(--line) calc(var(--rowH) - 1px),
-    var(--line) var(--rowH)
-  );
 }
 
 .wk-cell {

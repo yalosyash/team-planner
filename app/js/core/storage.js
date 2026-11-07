@@ -122,7 +122,9 @@ function flushBeacon() {
     return;
   }
   if (backend !== "server") return;
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch (e) {}
   // Уже отправленный keepalive-запрос завершится и после закрытия страницы.
   if (conflict || (saving && !dirtyWhileSaving)) return;
   try {
@@ -139,8 +141,13 @@ export function persistServer() {
   clearTimeout(writeTimer);
   writeTimer = null;
   if (conflict) {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
-    setStatus("error", "Данные изменились в другой вкладке — обновите страницу");
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (e) {}
+    setStatus(
+      "error",
+      "Данные изменились в другой вкладке — обновите страницу",
+    );
     return;
   }
   if (saving) {
@@ -169,9 +176,12 @@ export function persistServer() {
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
       } catch (e) {}
-      setStatus("error", conflict
-        ? "Данные изменились в другой вкладке — обновите страницу"
-        : "Нет подключения — данные не сохранены");
+      setStatus(
+        "error",
+        conflict
+          ? "Данные изменились в другой вкладке — обновите страницу"
+          : "Нет подключения — данные не сохранены",
+      );
     })
     .finally(() => {
       saving = false;

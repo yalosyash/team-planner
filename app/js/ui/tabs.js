@@ -21,11 +21,12 @@ export function renderTabs() {
   </div>`;
       })
       .join("") +
-    `<div class="addtab" id="addRelease" title="Новый релиз">+ Релиз</div>`;
+    `<button type="button" class="ghost addtab" id="addRelease" aria-label="Добавить релиз"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button>`;
 
   el.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", (e) => {
-      const { del, edit } = e.target.closest("[data-del], [data-edit]")?.dataset || {};
+      const { del, edit } =
+        e.target.closest("[data-del], [data-edit]")?.dataset || {};
       if (del) {
         e.stopPropagation();
         deleteRelease(del);

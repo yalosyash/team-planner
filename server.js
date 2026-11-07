@@ -339,10 +339,16 @@ const server = http.createServer((req, res) => {
           return;
         }
         const current = fs.existsSync(DATA)
-          ? JSON.parse(fs.readFileSync(DATA, "utf8")) : null;
+          ? JSON.parse(fs.readFileSync(DATA, "utf8"))
+          : null;
         if (packet.baseRevision !== revision(current)) {
           res.writeHead(409, { "Content-Type": TYPES[".json"] });
-          res.end(JSON.stringify({ ok: false, error: "Данные изменились в другой вкладке. Обновите страницу." }));
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: "Данные изменились в другой вкладке. Обновите страницу.",
+            }),
+          );
           return;
         }
         snapshot("auto", false); // версия «до изменения», не чаще раза в минуту

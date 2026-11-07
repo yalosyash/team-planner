@@ -123,8 +123,11 @@ function showPreview(packet) {
   rows.replaceChildren();
   const savedMapping = new Map(
     (preview.release?.exchange?.people || [])
-      .filter((pair) => packet.people.some((p) => p.id === pair.remote) &&
-        state.people.some((p) => p.id === pair.local))
+      .filter(
+        (pair) =>
+          packet.people.some((p) => p.id === pair.remote) &&
+          state.people.some((p) => p.id === pair.local),
+      )
       .map((pair) => [pair.remote, pair.local]),
   );
   const assigned = new Set(savedMapping.values());
@@ -145,8 +148,11 @@ function showPreview(packet) {
     const matches = state.people.filter((p) => p.name === person.name);
     if (saved) select.value = saved;
     else if (!state.people.length) select.value = "new";
-    else if (matches.length === 1 && !assigned.has(matches[0].id) &&
-      packet.people.filter((p) => p.name === person.name).length === 1) {
+    else if (
+      matches.length === 1 &&
+      !assigned.has(matches[0].id) &&
+      packet.people.filter((p) => p.name === person.name).length === 1
+    ) {
       select.value = matches[0].id;
       assigned.add(matches[0].id);
     }

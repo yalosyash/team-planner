@@ -155,7 +155,9 @@ async function restoreBackup(name) {
       state.activeId = state.releases[0].id;
     syncThemeFromState(); // версия хранит и тему
     render();
-    toast(`Восстановлено: релизов — ${state.releases.length}, задач — ${state.tasks.length}`);
+    toast(
+      `Восстановлено: релизов — ${state.releases.length}, задач — ${state.tasks.length}`,
+    );
     closeModal("#mBackups");
   } catch (e) {
     if (e.message === "not found") {

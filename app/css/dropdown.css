@@ -29,10 +29,15 @@ label.field select {
   block-size: var(--control-height);
   min-width: 0;
   padding-right: 38px;
-  background-image: var(--dropdown-chevron), linear-gradient(var(--line2), var(--line2));
+  background-image:
+    var(--dropdown-chevron), linear-gradient(var(--line2), var(--line2));
   background-repeat: no-repeat;
-  background-position: right 8px center, right 28px center;
-  background-size: 14px 14px, 1px calc(100% - 14px);
+  background-position:
+    right 8px center,
+    right 28px center;
+  background-size:
+    14px 14px,
+    1px calc(100% - 14px);
 }
 
 select:hover,
