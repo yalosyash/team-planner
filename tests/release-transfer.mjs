@@ -54,6 +54,22 @@ validatePacket(file);
 let deputy = empty();
 const before = clone(deputy);
 assert.throws(() => applyRelease(deputy, file, new Map()));
+
+// Новая версия → старая → снова новая; повтор последней версии заблокирован.
+const newerSource = clone(exported.next);
+newerSource.tasks[0].title = "Новая правка";
+const newerFile = exportRelease(newerSource, "r").packet;
+let restored = empty();
+restored = applyRelease(restored, newerFile, new Map([[file.people[0].id, "new"]]));
+const restoreMapping = new Map([[file.people[0].id, restored.people[0].id]]);
+assert.equal(previewRelease(restored, newerFile).repeated, true);
+restored = applyRelease(restored, file, restoreMapping);
+assert.equal(previewRelease(restored, file).repeated, true);
+assert.equal(previewRelease(restored, newerFile).repeated, false);
+restored = applyRelease(restored, newerFile, restoreMapping);
+assert.equal(restored.tasks[0].title, "Новая правка");
+assert.equal(previewRelease(restored, newerFile).repeated, true);
+assert.throws(() => applyRelease(restored, newerFile, restoreMapping));
 assert.deepEqual(deputy, before, "invalid mapping is atomic");
 deputy = applyRelease(deputy, file, new Map([[file.people[0].id, "new"]]));
 assert.equal(deputy.tasks[0].days, 0.5);

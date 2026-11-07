@@ -206,7 +206,9 @@ export function previewRelease(data, packet) {
   const deleted = [...old.keys()].filter(
     (k) => !incoming.tasks.some((t) => t.id === k),
   ).length;
-  const repeated = !!release?.exchange?.received?.includes(packet.transferId);
+  // Блокируем только последний применённый файл: после другой версии
+  // ранее загруженный файл снова можно применить.
+  const repeated = release?.exchange?.lastImport === packet.transferId;
   const stale =
     !!release?.exchange?.lastImport &&
     !packet.parents.includes(release.exchange.lastImport);

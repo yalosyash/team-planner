@@ -40,7 +40,7 @@ export function renderBoard() {
 
   if (!state.people.length) {
     board.innerHTML = `<div class="empty">
-    <h2>Шаг 1. Заведите сотрудников</h2>
+    <h2>Добавьте сотрудников</h2>
     <p>Добавьте людей отдела — они станут столбцами таблицы. Позже можно добавлять и удалять.</p>
     <div class="empty-actions">
       <button class="primary" id="ePeople">Добавить сотрудников</button>
@@ -53,8 +53,8 @@ export function renderBoard() {
 
   if (!release) {
     board.innerHTML = `<div class="empty">
-    <h2>Шаг 2. Заведите релиз</h2>
-    <p>Нажмите «+ Релиз» на панели вкладок выше, укажите номер и даты начала и окончания.</p>
+    <h2>Создайте релиз</h2>
+    <p>Нажмите «+ Релиз» на панели вкладок, укажите номер и даты начала и окончания.</p>
     <button class="primary" id="eRel">+ Новый релиз</button></div>`;
     $("#eRel").onclick = () => openRelease(null);
     return;
@@ -476,7 +476,10 @@ function bindCards() {
 function applyHints() {
   document.querySelectorAll(".card").forEach((card) => {
     // Высоту на сетке не меняем: две задачи на полдня должны стыковаться.
-    card.classList.toggle("is-compact", card.getBoundingClientRect().height < 30);
+    card.classList.toggle(
+      "is-compact",
+      card.getBoundingClientRect().height < 30,
+    );
     const txt = card.querySelector(".c-txt");
     const clippedV = clipTitle(card, txt);
     const num = card.querySelector(".c-num");

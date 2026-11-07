@@ -14,6 +14,7 @@ import {
   replaceState,
   save,
   state,
+  setServerRevision,
 } from "../core/storage.js";
 import { render } from "../core/render.js";
 import { syncThemeFromState } from "../core/theme.js";
@@ -107,13 +108,15 @@ async function openBackups() {
     }
 
     hint.textContent =
-      "Нажмите «Восстановить» — данные файла вернутся к выбранной версии.";
+      "Выберите копию для восстановления. Текущие данные будут сохранены.";
     list.innerHTML = backups
       .map(
-        (backup, index) => `
+        (backup) => `
     <div class="bkrow">
-      <span class="bk-when">${backup.at}</span>
-      <span class="bk-meta">${index === 0 ? "самый свежий снимок" : "снимок"} · ${(backup.size / 1024).toFixed(1)} КБ</span>
+      <span class="bk-date">${backup.at.split(" ")[0]}</span>
+      <span class="bk-time">${backup.at.split(" ")[1] || "—"}</span>
+      <span class="bk-meta">Релизов: ${Number.isInteger(backup.releases) ? backup.releases : "—"}</span>
+      <span class="bk-meta">Задач: ${Number.isInteger(backup.tasks) ? backup.tasks : "—"}</span>
       <button data-restore="${backup.name}">Восстановить</button>
     </div>`,
       )
@@ -146,15 +149,22 @@ async function restoreBackup(name) {
     const result = await response.json();
     if (!result.ok) throw new Error(result.error);
 
+    setServerRevision(result.revision);
     replaceState(migrateTasks(result.data));
     if (state.releases.length && !state.activeId)
       state.activeId = state.releases[0].id;
     syncThemeFromState(); // версия хранит и тему
     render();
-    toast("Данные восстановлены");
+    toast(`Восстановлено: релизов — ${state.releases.length}, задач — ${state.tasks.length}`);
     closeModal("#mBackups");
   } catch (e) {
-    alert("Не удалось восстановить: " + e.message);
+    if (e.message === "not found") {
+      await openBackups();
+      $("#bkHint").textContent =
+        "Этой копии уже нет: старые версии удаляются при создании новых. Список обновлён — выберите другую версию.";
+    } else {
+      alert("Не удалось восстановить: " + e.message);
+    }
   }
 }
 

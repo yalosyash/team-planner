@@ -476,39 +476,41 @@ label.field textarea:focus {
 .bklist {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   max-height: 340px;
   overflow: auto;
 }
 
 .bkrow {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr 1fr auto;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  gap: 12px;
+  padding: 12px 8px;
   font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-.bkrow:hover {
-  background: var(--panel);
+.bkrow + .bkrow {
+  border-top: 1px solid var(--line);
 }
 
-.bkrow .bk-when {
+.bk-date {
   font-weight: 600;
-  min-width: 150px;
 }
 
 .bkrow .bk-meta {
   color: var(--muted);
-  flex: 1;
 }
 
-.bkrow .bk-cur {
-  color: var(--ok-fg);
-  font-size: 11px;
-  border: 1px solid var(--ok-bd);
-  border-radius: 20px;
-  padding: 2px 8px;
+.bkrow button {
+  flex: none;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .bkrow {
+    min-width: 510px;
+  }
 }

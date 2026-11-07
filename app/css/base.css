@@ -67,11 +67,11 @@ button .ico {
   opacity: 0.75;
 }
 
-button:hover .ico {
+button:enabled:hover .ico {
   opacity: 1;
 }
 
-button:hover {
+button:enabled:hover {
   background: var(--panel2);
 }
 
@@ -81,7 +81,7 @@ button.primary {
   color: var(--on-accent);
 }
 
-button.primary:hover {
+button.primary:enabled:hover {
   background: var(--accent-btn-hover);
   border-color: var(--accent-btn-hover);
 }
@@ -91,7 +91,7 @@ button.danger {
   border-color: var(--danger-bd);
 }
 
-button.danger:hover {
+button.danger:enabled:hover {
   background: var(--danger-bg);
 }
 
@@ -102,8 +102,13 @@ button.ghost {
   border-radius: 6px;
 }
 
-button.ghost:hover {
+button.ghost:enabled:hover {
   background: var(--hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 /* Сообщение о переходе на очередь не перекрывает строки доски. */

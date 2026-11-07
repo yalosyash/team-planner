@@ -33,6 +33,17 @@ export let pendingLocal = null;
 let writeTimer = null;
 let saving = false;
 let dirtyWhileSaving = false;
+let serverRevision = null;
+let conflict = false;
+
+export function setServerRevision(value) {
+  serverRevision = value;
+  conflict = false;
+}
+
+function serverPacket() {
+  return JSON.stringify({ data: state, baseRevision: serverRevision });
+}
 
 /* Запись не удалась. Держим это в памяти, чтобы индикатор не стал
    зелёным просто потому, что сервер ожил, — данные-то всё ещё не
@@ -84,6 +95,8 @@ export function hasUnsaved() {
 }
 
 export function markDirty() {
+  if (saving) dirtyWhileSaving = true;
+  setStatus("", "Сохранение…");
   clearTimeout(writeTimer);
   writeTimer = setTimeout(persist, 500);
 }
@@ -101,7 +114,7 @@ export function persist() {
 /* Сохранить немедленно — вызывается при закрытии вкладки, чтобы
    последнее изменение (те самые 0.5 сек задержки) не потерялось. */
 function flushBeacon() {
-  if (!writeTimer) return;
+  if (!hasUnsaved()) return;
   clearTimeout(writeTimer);
   writeTimer = null;
   if (backend === "browser") {
@@ -109,10 +122,13 @@ function flushBeacon() {
     return;
   }
   if (backend !== "server") return;
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  // Уже отправленный keepalive-запрос завершится и после закрытия страницы.
+  if (conflict || (saving && !dirtyWhileSaving)) return;
   try {
     navigator.sendBeacon(
       "/api/data",
-      new Blob([JSON.stringify(state)], { type: "application/json" }),
+      new Blob([serverPacket()], { type: "application/json" }),
     );
   } catch (e) {}
 }
@@ -120,6 +136,13 @@ function flushBeacon() {
 window.addEventListener("pagehide", flushBeacon);
 
 export function persistServer() {
+  clearTimeout(writeTimer);
+  writeTimer = null;
+  if (conflict) {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    setStatus("error", "Данные изменились в другой вкладке — обновите страницу");
+    return;
+  }
   if (saving) {
     dirtyWhileSaving = true;
     return;
@@ -128,22 +151,27 @@ export function persistServer() {
   fetch("/api/data", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(state),
+    body: serverPacket(),
+    keepalive: true,
   })
     .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-    .then(() => {
+    .then((result) => {
+      serverRevision = result.revision;
       pendingFailed = false;
       setStatus("server", "Сохранено в data.json");
       dropBrowserCopy();
     })
-    .catch(() => {
+    .catch((error) => {
+      conflict = error.status === 409;
       // на диск не легло — хотя бы не теряем правки при перезагрузке вкладки:
       // при следующем старте приложение предложит взять их из браузера
       pendingFailed = true;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
       } catch (e) {}
-      setStatus("error", "Нет подключения — данные не сохранены");
+      setStatus("error", conflict
+        ? "Данные изменились в другой вкладке — обновите страницу"
+        : "Нет подключения — данные не сохранены");
     })
     .finally(() => {
       saving = false;
@@ -164,10 +192,14 @@ function dropBrowserCopy() {
 }
 
 function persistBrowser() {
+  clearTimeout(writeTimer);
+  writeTimer = null;
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
+    pendingFailed = false;
     setStatus("browser", "Хранение: в браузере (сервер не найден)");
   } catch (e) {
+    pendingFailed = true;
     setStatus("error", "Не удалось сохранить в браузере");
   }
 }
@@ -182,6 +214,7 @@ export async function initStorage() {
     if (r.ok) {
       backend = "server";
       const j = await r.json();
+      setServerRevision(j.revision);
       initial = valid(j.data) ? j.data : null;
     }
   } catch (e) {
@@ -218,8 +251,11 @@ export async function initStorage() {
           state = local; // файла нет — берём из браузера
           legacy = localLegacy;
         } else if (
-          ((JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) && local.tasks.length) ||
-            JSON.stringify(local.calendar || {}) !== JSON.stringify(state.calendar || {}))
+          JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) ||
+          JSON.stringify(local.releases) !== JSON.stringify(state.releases) ||
+          JSON.stringify(local.people) !== JSON.stringify(state.people) ||
+          JSON.stringify(local.calendar || {}) !==
+            JSON.stringify(state.calendar || {})
         ) {
           pendingLocal = local; // разные — спросим после отрисовки
         }
@@ -329,4 +365,3 @@ function sortQueue(tasks) {
     });
   });
 }
-

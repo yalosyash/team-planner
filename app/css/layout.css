@@ -244,25 +244,67 @@
   font-weight: 400;
 }
 
-.tab .x {
-  opacity: 0.55;
+.tab .x,
+.tab .edit {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: -4px -7px;
+  padding: 0;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1;
 }
 
-.tab .x:hover {
-  opacity: 1;
-  color: var(--danger);
+.tab .x svg,
+.tab .edit svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  pointer-events: none;
 }
 
-.tab .edit {
-  opacity: 0.55;
-  font-size: 12px;
+.tab .x:enabled:hover,
+.tab .edit:enabled:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink);
 }
 
-.tab .edit:hover {
-  opacity: 1;
-  color: var(--accent);
+.tab .edit svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 1.8;
+}
+
+.tab .x::before,
+.tab .edit::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.tab .x:enabled:hover::before,
+.tab .edit:enabled:hover::before {
+  background: color-mix(in srgb, var(--ink) 12%, var(--tab-bg));
+  border-color: var(--line2);
+}
+
+.tab .x:enabled:active::before,
+.tab .edit:enabled:active::before {
+  background: color-mix(in srgb, var(--ink) 20%, var(--tab-bg));
 }
 
 .addtab {

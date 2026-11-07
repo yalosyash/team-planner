@@ -34,6 +34,33 @@ try {
   const backups = await (await fetch(origin + "/api/backups")).json();
   assert.equal(backups.backups.length, 2, "both backups appear in Versions");
   assert.equal((await post({ tasks: [] })).status, 400);
+  // Две вкладки прочитали одну версию; старая не должна вернуть удалённый релиз.
+  const loaded = await (await fetch(origin + "/api/data")).json();
+  const write = body => fetch(origin + "/api/data", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const withRelease = { ...disk, releases: [{ id: "r" }] };
+  const first = await write({ data: withRelease, baseRevision: loaded.revision });
+  assert.equal(first.status, 200);
+  const saved = await first.json();
+  assert.equal((await write({ data: disk, baseRevision: saved.revision })).status, 200);
+  assert.equal((await write({ data: withRelease, baseRevision: saved.revision })).status, 409);
+  assert.equal((await write(withRelease)).status, 409, "Old application tabs must also be rejected");
+  assert.deepEqual(JSON.parse(fs.readFileSync(dataFile)), disk);
+  const restore = name => fetch(origin + "/api/restore", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  const restored = await restore(backups.backups[0].name);
+  assert.equal(restored.status, 200);
+  const restoredResult = await restored.json();
+  assert.deepEqual(restoredResult.data, memory);
+  const versions = await (await fetch(origin + "/api/backups")).json();
+  const beforeRestore = versions.backups.find(b => b.name.includes("before-restore"));
+  assert.ok(beforeRestore, "Snapshot before restoration must be listed");
+  assert.equal((await restore(beforeRestore.name)).status, 200);
+  assert.deepEqual(JSON.parse(fs.readFileSync(dataFile)), disk);
   fs.rmSync(path.join(directory, "data/backups"), { recursive: true });
   fs.writeFileSync(path.join(directory, "data/backups"), "blocked");
   assert.equal((await post(memory)).status, 400);

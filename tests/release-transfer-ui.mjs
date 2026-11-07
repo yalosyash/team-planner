@@ -47,7 +47,17 @@ const source = {
 const exported = exportRelease(source, "r");
 let backupFails = false;
 let backup = null;
+let missingVersion = false;
 const server = http.createServer(async (req, res) => {
+  if (req.url === "/api/backups") {
+    res.end(JSON.stringify({ backups: [{ name: "test.json", at: "07.11.2026", size: 100, releases: 1, tasks: 1 }] }));
+    return;
+  }
+  if (req.url === "/api/restore") {
+    res.end(JSON.stringify(missingVersion ? { ok: false, error: "not found" }
+      : { ok: true, data: structuredClone(source), revision: "restored" }));
+    return;
+  }
   if (req.url === "/api/data") {
     for await (const chunk of req) {
     } // запись тоже изолирована
@@ -257,6 +267,7 @@ try {
   assert.equal(await evaluate('document.querySelector("#importMenu").hidden'), true);
   await evaluate('document.querySelector("#btnExport").click(); document.querySelector("#btnExportRelease").click()');
   assert.equal(await evaluate('document.querySelector("#reExport").disabled'), true);
+  assert.equal(await evaluate('document.querySelector("#reRelease").disabled'), true);
   await evaluate('document.querySelector("#mReleaseExport [data-close]").click()');
   await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify({ ...source, releases: [...source.releases, { ...source.releases[0], id: "second", number: "2.0" }], activeId: "r" })})`);
   await evaluate(`globalThis.downloads = []; HTMLAnchorElement.prototype.click = function() {
@@ -264,6 +275,7 @@ try {
   }`);
   await evaluate('document.querySelector("#btnExport").click(); document.querySelector("#btnExportRelease").click()');
   assert.equal(await evaluate('document.querySelector("#reRelease").options.length'), 2);
+  assert.equal(await evaluate('document.querySelector("#reRelease").disabled'), false);
   await evaluate('document.querySelector("#reRelease").value = "second"; document.querySelector("#reExport").click()');
   await waitFor('downloads.length === 1');
   assert.equal(await evaluate('downloads[0].release.number'), "2.0");
@@ -293,9 +305,11 @@ try {
   await loadFile(exported.packet);
   assert.equal(
     await evaluate('document.querySelector("#riPeople select").value'),
-    "",
-    "same name must not auto-match",
+    "local",
+    "unique matching name is selected automatically",
   );
+  // Ручной выбор по-прежнему доступен; отсутствие выбора проверяется при импорте.
+  await evaluate('document.querySelector("#riPeople select").value = ""');
   await evaluate('document.querySelector("#riApply").click()');
   await waitFor('document.querySelector("#riError").textContent.length > 0');
   assert.equal(
@@ -346,9 +360,16 @@ try {
   // Повторный файл заблокирован.
   await loadFile(exported.packet);
   assert.equal(
+    await evaluate('document.querySelector("#riWarning").textContent'),
+    "Этот файл уже импортирован. Повторная загрузка заблокирована.",
+  );
+  assert.equal(
     await evaluate('document.querySelector("#riApply").disabled'),
     true,
   );
+  // Даже принудительный вызов обработчика не должен включать кнопку в finally.
+  await evaluate('document.querySelector("#riApply").dispatchEvent(new Event("click"))');
+  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
   await evaluate(
     'document.querySelector("#mReleaseImport [data-close]").click()',
   );
@@ -369,11 +390,18 @@ try {
     /параллельные/,
   );
   await evaluate('document.querySelector("#riApply").click()');
-  await waitFor(
-    'document.querySelector("#riError").textContent.includes("Подтвердите")',
-  );
+  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
+  assert.equal(await evaluate('document.querySelector("#riError").textContent'), "");
+  assert.deepEqual(await evaluate(`(() => {
+    const style = getComputedStyle(document.querySelector('#riApply'));
+    return [style.cursor, style.opacity];
+  })()`), ['not-allowed', '0.45']);
+  await evaluate('document.querySelector("#riConfirm").click()');
+  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), false);
+  await evaluate('document.querySelector("#riConfirm").click()');
+  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
   await evaluate(
-    'document.querySelector("#riConfirm").checked = true; document.querySelector("#riApply").click()',
+    'document.querySelector("#riConfirm").click(); document.querySelector("#riApply").click()',
   );
   await waitFor(
     '!document.querySelector("#mReleaseImport").classList.contains("open")',
@@ -399,6 +427,33 @@ try {
     ),
     true,
   );
+  // Восстановление новой версии после отката на старый файл доступно в UI.
+  await evaluate('document.querySelector("#mReleaseImport [data-close]").click()');
+  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`);
+  for (const packet of [changed.packet, exported.packet, changed.packet]) {
+    await loadFile(packet);
+    const needsConfirmation = await evaluate('!document.querySelector("#riConfirmWrap").hidden');
+    if (needsConfirmation) await evaluate('document.querySelector("#riConfirm").click()');
+    assert.equal(await evaluate('document.querySelector("#riApply").disabled'), false);
+    await evaluate('document.querySelector("#riApply").click()');
+    await waitFor('!document.querySelector("#mReleaseImport").classList.contains("open")');
+  }
+  assert.equal(await evaluate('(await import("/js/core/storage.js")).state.tasks[0].title'), "Новое описание");
+  await loadFile(changed.packet);
+  assert.equal(await evaluate('document.querySelector("#riApply").disabled'), true);
+  await evaluate('document.querySelector("#mReleaseImport [data-close]").click(); window.confirm = () => true');
+  await evaluate(`(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`);
+  await evaluate('document.querySelector("#btnBackups").click()');
+  await waitFor('document.querySelector("[data-restore]")');
+  assert.ok(await evaluate('document.querySelector("#bklist").textContent.includes("Релизов: 1") && document.querySelector("#bklist").textContent.includes("Задач: 1")'));
+  await evaluate('document.querySelector("[data-restore]").click()');
+  await waitFor('!document.querySelector("#mBackups").classList.contains("open")');
+  assert.equal(await evaluate('(await import("/js/core/storage.js")).state.releases.length'), 1);
+  missingVersion = true;
+  await evaluate('document.querySelector("#btnBackups").click()');
+  await waitFor('document.querySelector("[data-restore]")');
+  await evaluate('document.querySelector("[data-restore]").click()');
+  await waitFor('document.querySelector("#bkHint").textContent.includes("Список обновлён")');
   assert.deepEqual(errors, []);
   console.log(
     "Release transfer UI: all checks passed (Chrome, desktop/mobile, cancellation, backup failure, conflict and repeat)",

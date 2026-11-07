@@ -43,6 +43,7 @@ function openExportChoice() {
   );
   if (state.releases.some((r) => r.id === state.activeId))
     select.value = state.activeId;
+  select.disabled = !state.releases.length;
   $("#reExport").disabled = !state.releases.length;
   $("#reHint").textContent = state.releases.length
     ? "В файл войдут задачи выбранного релиза и сотрудники с задачами."
@@ -53,10 +54,11 @@ function openExportChoice() {
 function exportSelected() {
   try {
     const { next, packet } = exportRelease(state, $("#reRelease").value);
-    const releaseName = packet.release.number
-      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
-      .trim()
-      .replace(/[. ]+$/g, "") || "release";
+    const releaseName =
+      packet.release.number
+        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+        .trim()
+        .replace(/[. ]+$/g, "") || "release";
     downloadJson(
       packet,
       `team-planner-release-${releaseName}-${new Date().toISOString().slice(0, 10)}.json`,
@@ -71,6 +73,13 @@ function exportSelected() {
 }
 
 let pending = null;
+function syncApplyButton() {
+  const preview = pending && previewRelease(state, pending.packet);
+  $("#riApply").disabled =
+    !preview ||
+    preview.repeated ||
+    (!!preview.release && !$("#riConfirm").checked);
+}
 function showPreview(packet) {
   const preview = previewRelease(state, packet);
   pending = { packet, revision: importRevision(state) };
@@ -92,25 +101,33 @@ function showPreview(packet) {
     warnings.push(
       "Этот файл уже импортирован. Повторная загрузка заблокирована.",
     );
-  if (preview.stale)
+  if (!preview.repeated && preview.stale)
     warnings.push(
-      "Возможен устаревший возврат: файл не содержит последнюю принятую передачу.",
+      "Возможно, это старая версия релиза. При замене последние изменения могут быть потеряны.",
     );
-  if (preview.conflict)
+  if (!preview.repeated && preview.conflict)
     warnings.push(
       "Обнаружены параллельные правки: текущий релиз отличается от исходного снимка передачи.",
     );
-  if (preview.unchanged) warnings.push("Содержимое релиза не изменилось.");
+  if (!preview.repeated && preview.unchanged)
+    warnings.push("Содержимое релиза не изменилось.");
   $("#riWarning").textContent = warnings.join(" ");
   $("#riConfirmWrap").hidden = !preview.release || preview.repeated;
   $("#riConfirm").checked = false;
-  $("#riApply").disabled = preview.repeated;
+  syncApplyButton();
   $("#riApply").textContent = preview.release
     ? "Заменить релиз"
     : "Добавить релиз";
   $("#riError").textContent = "";
   const rows = $("#riPeople");
   rows.replaceChildren();
+  const savedMapping = new Map(
+    (preview.release?.exchange?.people || [])
+      .filter((pair) => packet.people.some((p) => p.id === pair.remote) &&
+        state.people.some((p) => p.id === pair.local))
+      .map((pair) => [pair.remote, pair.local]),
+  );
+  const assigned = new Set(savedMapping.values());
   packet.people.forEach((person) => {
     const row = document.createElement("label");
     row.textContent = `${person.name} → `;
@@ -124,11 +141,15 @@ function showPreview(packet) {
             `<option value="${esc(p.id)}">${esc(p.name)} (№${index + 1})${p.name === person.name ? " — совпадает имя" : ""}</option>`,
         )
         .join("");
-    const saved = preview.release?.exchange?.people?.find(
-      (p) => p.remote === person.id,
-    )?.local;
-    if (saved && state.people.some((p) => p.id === saved)) select.value = saved;
+    const saved = savedMapping.get(person.id);
+    const matches = state.people.filter((p) => p.name === person.name);
+    if (saved) select.value = saved;
     else if (!state.people.length) select.value = "new";
+    else if (matches.length === 1 && !assigned.has(matches[0].id) &&
+      packet.people.filter((p) => p.name === person.name).length === 1) {
+      select.value = matches[0].id;
+      assigned.add(matches[0].id);
+    }
     row.append(select);
     rows.append(row);
   });
@@ -147,8 +168,7 @@ async function applyPending() {
       );
     }
     const preview = previewRelease(state, pending.packet);
-    if (preview.release && !$("#riConfirm").checked)
-      throw new Error("Подтвердите замену текущего релиза целиком");
+    if (preview.release && !$("#riConfirm").checked) return;
     const mapping = new Map(
       [...$("#riPeople").querySelectorAll("select")].map((s) => [
         s.dataset.person,
@@ -193,11 +213,12 @@ async function applyPending() {
   } catch (error) {
     $("#riError").textContent = error.message;
   } finally {
-    button.disabled = false;
+    syncApplyButton();
   }
 }
 
 export function initReleaseTransfer() {
+  $("#riConfirm").addEventListener("change", syncApplyButton);
   $("#btnExportRelease").addEventListener("click", openExportChoice);
   $("#reExport").addEventListener("click", exportSelected);
   $("#btnImportRelease").addEventListener("click", () =>

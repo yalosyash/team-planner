@@ -5,6 +5,11 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
+const { createHash } = require("crypto");
+
+function revision(data) {
+  return createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
 
 const ROOT = __dirname;
 const APP = path.join(ROOT, "app"); // публичный код приложения
@@ -55,7 +60,7 @@ const TYPES = {
   ".ico": "image/x-icon",
 };
 const MAX_BODY = 5 * 1024 * 1024; // 5 МБ
-const NAME_RE = /^data_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\w+)?\.json$/;
+const NAME_RE = /^data_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_[\w-]+)?\.json$/;
 
 let lastSnap = 0;
 
@@ -130,7 +135,14 @@ function listBackups() {
         /^data_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/,
       );
       const at = m ? `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}:${m[6]}` : "";
-      return { name: f, at, size: st.size };
+      let releases = null;
+      let tasks = null;
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(BACKUPS, f), "utf8"));
+        releases = data.releases?.length ?? null;
+        tasks = data.tasks?.length ?? null;
+      } catch (e) {}
+      return { name: f, at, size: st.size, releases, tasks };
     })
     .sort((a, b) => (a.name < b.name ? 1 : -1));
 }
@@ -288,7 +300,7 @@ const server = http.createServer((req, res) => {
       "Content-Type": TYPES[".json"],
       "Cache-Control": "no-store",
     });
-    res.end(JSON.stringify({ data }));
+    res.end(JSON.stringify({ data, revision: revision(data) }));
     return;
   }
 
@@ -310,7 +322,8 @@ const server = http.createServer((req, res) => {
         return;
       }
       try {
-        const obj = JSON.parse(body);
+        const packet = JSON.parse(body);
+        const obj = url === "/api/data" && packet.data ? packet.data : packet;
         if (!validShape(obj)) throw new Error("bad shape");
         if (url === "/api/backup") {
           fs.mkdirSync(BACKUPS, { recursive: true });
@@ -325,10 +338,17 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ ok: true, name }));
           return;
         }
+        const current = fs.existsSync(DATA)
+          ? JSON.parse(fs.readFileSync(DATA, "utf8")) : null;
+        if (packet.baseRevision !== revision(current)) {
+          res.writeHead(409, { "Content-Type": TYPES[".json"] });
+          res.end(JSON.stringify({ ok: false, error: "Данные изменились в другой вкладке. Обновите страницу." }));
+          return;
+        }
         snapshot("auto", false); // версия «до изменения», не чаще раза в минуту
         writeAtomic(DATA, JSON.stringify(obj, null, 2));
         res.writeHead(200, { "Content-Type": TYPES[".json"] });
-        res.end('{"ok":true}');
+        res.end(JSON.stringify({ ok: true, revision: revision(obj) }));
       } catch (e) {
         res.writeHead(400, { "Content-Type": TYPES[".json"] });
         res.end(JSON.stringify({ ok: false, error: e.message }));
@@ -369,7 +389,7 @@ const server = http.createServer((req, res) => {
         snapshot("before-restore", true); // текущее состояние тоже сохраняем
         writeAtomic(DATA, JSON.stringify(data, null, 2));
         res.writeHead(200, { "Content-Type": TYPES[".json"] });
-        res.end(JSON.stringify({ ok: true, data }));
+        res.end(JSON.stringify({ ok: true, data, revision: revision(data) }));
       } catch (e) {
         res.writeHead(400, { "Content-Type": TYPES[".json"] });
         res.end(JSON.stringify({ ok: false, error: e.message }));
