@@ -80,6 +80,17 @@ body {
 /* фон и на html: иначе при прокрутке за край в тёмной теме мелькает белое */
 html {
   background: var(--bg);
+  cursor: default;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="image"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+a[href] {
+  cursor: pointer;
 }
 
 body {

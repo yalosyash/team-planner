@@ -354,12 +354,21 @@ try {
   await evaluate(
     `(await import('/js/core/storage.js')).replaceState(${JSON.stringify(initial)})`,
   );
-  // Два меню вместо четырёх кнопок, закрытие снаружи и выбор релиза.
+  // Меню экспорта, импорта и дополнительных действий.
   assert.equal(
     await evaluate('document.querySelectorAll(".io-dropdown").length'),
-    2,
+    3,
+  );
+  await evaluate('document.querySelector("#btnMore").click()');
+  assert.equal(
+    await evaluate('!document.querySelector("#moreMenu").hidden && document.querySelector("#moreMenu").contains(document.querySelector("#btnUpdates")) && document.querySelector("#moreMenu").contains(document.querySelector("#btnBackups"))'),
+    true,
   );
   await evaluate('document.querySelector("#btnExport").click()');
+  assert.equal(
+    await evaluate('document.querySelector("#moreMenu").hidden'),
+    true,
+  );
   assert.equal(
     await evaluate('document.querySelector("#exportMenu").hidden'),
     false,

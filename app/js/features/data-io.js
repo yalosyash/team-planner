@@ -7,7 +7,7 @@ import {
   BACKUP_KEY,
   downloadJson,
 } from "./release-transfer.js";
-import { todayISO } from "../core/dates.js";
+import { exportFilename } from "../core/export-filename.js";
 import {
   backend,
   migrateTasks,
@@ -21,14 +21,7 @@ import { syncThemeFromState } from "../core/theme.js";
 import { closeModal, openModal } from "../ui/modal.js";
 
 function exportJson() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], {
-    type: "application/json",
-  });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "team-planner-" + todayISO() + ".json";
-  link.click();
-  URL.revokeObjectURL(link.href);
+  downloadJson(state, exportFilename(state));
   toast("Файл сохранён");
 }
 
@@ -79,7 +72,7 @@ async function openBackups() {
           return;
         try {
           const restored = migrateTasks(JSON.parse(raw));
-          downloadJson(state, "team-planner-before-restore.json");
+          downloadJson(state, exportFilename(state, { purpose: "before-restore" }));
           replaceState(restored);
           syncThemeFromState();
           save();
@@ -93,7 +86,7 @@ async function openBackups() {
       return;
     }
     hint.textContent =
-      "Версии доступны только при запуске через start.bat (сервер не найден).";
+      "Резервные копии доступны только при запуске через start.bat (сервер не найден).";
     return;
   }
 
@@ -103,7 +96,7 @@ async function openBackups() {
     const { backups } = await response.json();
     if (!backups.length) {
       hint.textContent =
-        "Версий пока нет. Они создаются при изменениях и при каждом запуске.";
+        "Резервных копий пока нет. Они создаются при изменениях и при каждом запуске.";
       return;
     }
 
@@ -128,14 +121,14 @@ async function openBackups() {
       );
     });
   } catch (e) {
-    hint.textContent = "Не удалось получить список версий.";
+    hint.textContent = "Не удалось получить список резервных копий.";
   }
 }
 
 async function restoreBackup(name) {
   if (
     !confirm(
-      "Восстановить данные из этой версии? Текущее состояние тоже будет сохранено в backups.",
+      "Восстановить данные из этой резервной копии? Текущее состояние тоже будет сохранено в резервных копиях.",
     )
   )
     return;
@@ -163,7 +156,7 @@ async function restoreBackup(name) {
     if (e.message === "not found") {
       await openBackups();
       $("#bkHint").textContent =
-        "Этой копии уже нет: старые версии удаляются при создании новых. Список обновлён — выберите другую версию.";
+        "Этой копии уже нет: старые копии удаляются при создании новых. Список обновлён — выберите другую копию.";
     } else {
       alert("Не удалось восстановить: " + e.message);
     }

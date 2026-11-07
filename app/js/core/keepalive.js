@@ -49,7 +49,7 @@ export function initKeepalive() {
           persistServer();
           return;
         }
-        setStatus("server", "Сохранено в data.json");
+        setStatus("server", "Сохранено");
       })
       .catch(() => {
         // Сервер пропал. Показываем это сразу в индикаторе — иначе он

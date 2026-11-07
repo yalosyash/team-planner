@@ -52,7 +52,7 @@
   line-height: 1;
   color: var(--chip-fg);
   background: var(--chip-bg);
-  border: 1px dashed var(--chip-bd);
+  border: 1px solid var(--chip-bd);
   border-radius: 999px;
   padding: 5px 10px;
   cursor: pointer;
@@ -105,10 +105,10 @@
   font-weight: 500;
   line-height: 1;
   color: var(--muted);
-  background: var(--panel);
-  border: 1px solid var(--line2);
-  border-radius: 999px;
-  padding: 6px 11px 6px 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -119,24 +119,25 @@
     color 0.15s;
 }
 
+.store-label {
+  /* Оптическое выравнивание строчных букв относительно центра точки. */
+  transform: translateY(-1px);
+}
+
 .store .sdot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--dot);
   flex: none;
-  box-shadow: 0 0 0 3px var(--dot-ring);
 }
 
 .store.on {
-  color: var(--ok-fg);
-  background: var(--ok-bg);
-  border-color: var(--ok-bd);
+  color: var(--muted);
 }
 
 .store.on .sdot {
   background: var(--ok-dot);
-  box-shadow: 0 0 0 3px var(--ok-ring);
 }
 
 /* сервер не найден — работаем в браузере: сигналим красным, чтобы заметить сразу */
@@ -166,13 +167,16 @@
 /* переключатель темы: только иконка, чтобы не растягивать шапку.
    Иконка показывает, куда переключим, — так же, как подсказка в title:
    в тёмной теме солнце (→ светлая), в светлой месяц (→ тёмная). */
+.actions button {
+  height: var(--control-height);
+}
+
 .theme-btn {
-  width: 32px;
-  height: 32px;
+  width: var(--control-height);
   padding: 0;
   justify-content: center;
   flex: none;
-  color: var(--muted);
+  color: var(--ink);
 }
 
 .theme-btn:hover {
@@ -182,7 +186,7 @@
 .theme-btn .ico {
   width: 16px;
   height: 16px;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .theme-btn .ico-sun {

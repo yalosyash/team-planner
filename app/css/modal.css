@@ -128,7 +128,7 @@ label.check input[type="checkbox"] {
 }
 
 label.field input,
-label.field select,
+.field select,
 label.field textarea {
   font: inherit;
   padding: 8px 10px;
@@ -139,7 +139,7 @@ label.field textarea {
 }
 
 label.field input,
-label.field select {
+.field select {
   height: var(--control-height);
 }
 /* описание задачи: растёт по содержимому без внутреннего скролла,
@@ -182,7 +182,7 @@ textarea:focus {
 }
 
 label.field input:focus,
-label.field select:focus,
+.field select:focus,
 label.field textarea:focus {
   outline: none;
   border-color: var(--accent);
@@ -483,9 +483,9 @@ label.field textarea:focus {
 
 .bkrow {
   display: grid;
-  grid-template-columns: auto auto 1fr 1fr auto;
+  grid-template-columns: max-content 1fr max-content max-content max-content;
   align-items: center;
-  gap: 12px;
+  column-gap: 10px;
   padding: 12px 8px;
   font-size: 12px;
   white-space: nowrap;
@@ -509,8 +509,7 @@ label.field textarea:focus {
   font-size: 12px;
 }
 
-@media (max-width: 600px) {
-  .bkrow {
-    min-width: 510px;
-  }
+.bk-time {
+  margin-left: -4px;
+  color: var(--muted);
 }

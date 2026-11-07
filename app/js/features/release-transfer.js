@@ -8,6 +8,7 @@ import {
 } from "../core/release-transfer.js";
 import { render } from "../core/render.js";
 import { openModal, closeModal } from "../ui/modal.js";
+import { exportFilename } from "../core/export-filename.js";
 
 export const BACKUP_KEY = "team-planner-release-backup";
 export function downloadJson(data, name) {
@@ -36,7 +37,7 @@ function openExportChoice() {
         const number = document.createElement("strong");
         number.textContent = release.number;
         const dates = document.createElement("span");
-        dates.textContent = `: ${formatDate(release.start)} — ${formatDate(release.end)}`;
+        dates.textContent = `: ${formatDate(release.start)} – ${formatDate(release.end)}`;
         option.append(number, dates);
         return option;
       }),
@@ -54,15 +55,7 @@ function openExportChoice() {
 function exportSelected() {
   try {
     const { next, packet } = exportRelease(state, $("#reRelease").value);
-    const releaseName =
-      packet.release.number
-        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
-        .trim()
-        .replace(/[. ]+$/g, "") || "release";
-    downloadJson(
-      packet,
-      `team-planner-release-${releaseName}-${new Date().toISOString().slice(0, 10)}.json`,
-    );
+    downloadJson(packet, exportFilename(packet));
     replaceState(next);
     save();
     closeModal("#mReleaseExport");
@@ -90,7 +83,7 @@ function showPreview(packet) {
   $("#riSummary").replaceChildren(
     `${preview.release ? "Обновление" : "Добавление"} релиза `,
     number,
-    `: ${formatDate(packet.release.start)} — ${formatDate(packet.release.end)}.`,
+    `: ${formatDate(packet.release.start)} – ${formatDate(packet.release.end)}.`,
     document.createElement("br"),
     "Всего задач: ",
     taskCount,
@@ -244,6 +237,6 @@ export function initReleaseTransfer() {
   });
   $("#riApply").addEventListener("click", applyPending);
   $("#riDownloadCurrent").addEventListener("click", () => {
-    downloadJson(state, "team-planner-before-import.json");
+    downloadJson(state, exportFilename(state, { purpose: "before-import" }));
   });
 }

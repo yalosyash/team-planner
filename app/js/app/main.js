@@ -18,6 +18,7 @@ import { initTheme, syncThemeFromState } from "../core/theme.js";
 import { initKeepalive } from "../core/keepalive.js";
 import { initModals } from "../ui/modal.js";
 import { initTooltip } from "../ui/tooltip.js";
+import { initDropdownHover } from "../ui/dropdown.js";
 import { renderTeam } from "../ui/team.js";
 import { renderTabs } from "../ui/tabs.js";
 import { renderBoard } from "../ui/board.js";
@@ -25,6 +26,7 @@ import { initPeople, openPeople } from "../features/people.js";
 import { initRelease } from "../features/release.js";
 import { initTask, openTask } from "../features/task.js";
 import { initDataIo } from "../features/data-io.js";
+import { initUpdates } from "../features/updates.js";
 
 /* части интерфейса перерисовываются в этом порядке */
 onRender(renderTeam);
@@ -48,11 +50,13 @@ function ensureActiveRelease() {
   initTheme();
   initModals();
   initTooltip();
+  initDropdownHover();
   bindTopbar();
   initPeople();
   initRelease();
   initTask();
   initDataIo();
+  initUpdates();
   initKeepalive();
 
   let { legacy, localLegacy } = await initStorage();

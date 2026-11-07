@@ -84,7 +84,13 @@ export function setStatus(mode, text) {
           ? "err"
           : "";
   el.className = "store " + cls;
-  el.innerHTML = '<span class="sdot"></span>' + text;
+  el.title = mode === "server" ? "Сохранено в data.json" : text;
+  const dot = document.createElement("span");
+  dot.className = "sdot";
+  const label = document.createElement("span");
+  label.className = "store-label";
+  label.textContent = text;
+  el.replaceChildren(dot, label);
 }
 
 /* Есть ли правки, которые не дошли до диска. По этому признаку сигнал
@@ -165,7 +171,7 @@ export function persistServer() {
     .then((result) => {
       serverRevision = result.revision;
       pendingFailed = false;
-      setStatus("server", "Сохранено в data.json");
+      setStatus("server", "Сохранено");
       dropBrowserCopy();
     })
     .catch((error) => {
@@ -273,7 +279,7 @@ export async function initStorage() {
     }
   } catch (e) {}
 
-  if (backend === "server") setStatus("server", "Сохранено в data.json");
+  if (backend === "server") setStatus("server", "Сохранено");
   else setStatus("browser", "Хранение: в браузере (сервер не найден)");
   return { legacy, localLegacy };
 }

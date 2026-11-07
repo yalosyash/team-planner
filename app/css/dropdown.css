@@ -10,7 +10,7 @@
 }
 
 select,
-label.field select,
+.field select,
 .io-dropdown > button {
   font: inherit;
   color: var(--ink);
@@ -22,32 +22,27 @@ label.field select,
 }
 
 select,
-label.field select {
+.field select {
   appearance: none;
   padding-block: 8px;
   line-height: 1.35;
   block-size: var(--control-height);
   min-width: 0;
   padding-right: 38px;
-  background-image:
-    var(--dropdown-chevron), linear-gradient(var(--line2), var(--line2));
+  background-image: var(--dropdown-chevron);
   background-repeat: no-repeat;
-  background-position:
-    right 8px center,
-    right 28px center;
-  background-size:
-    14px 14px,
-    1px calc(100% - 14px);
+  background-position: right 8px center;
+  background-size: 14px 14px;
 }
 
-select:hover,
-label.field select:hover,
+select.is-pointer-hovered,
+.field select.is-pointer-hovered,
 .io-dropdown > button:hover {
   background-color: var(--panel2);
 }
 
 select:focus,
-label.field select:focus,
+.field select:focus,
 .io-dropdown > button:focus-visible {
   outline: none;
   border-color: var(--accent);
@@ -104,7 +99,6 @@ option {
   flex: none;
   margin-left: 2px;
   padding-left: 6px;
-  border-left: 1px solid var(--line2);
 }
 
 .io-toggle .ico {
@@ -121,7 +115,7 @@ option {
   top: calc(100% + 6px);
   z-index: 60;
   min-width: 132px;
-  padding: 3px;
+  padding: 5px;
   display: grid;
   gap: 1px;
   background: var(--card);
@@ -133,7 +127,7 @@ option {
 .io-menu button {
   width: 100%;
   justify-content: flex-start;
-  padding: var(--dropdown-item-padding);
+  padding: 6px 12px;
   border-color: transparent;
   border-radius: calc(var(--dropdown-radius) - 3px);
 }
@@ -144,11 +138,64 @@ option {
   background: var(--panel2);
 }
 
+.more-dropdown > .more-btn {
+  padding: 7px 12px;
+  gap: 7px;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.more-btn .ico {
+  width: 16px;
+  height: 16px;
+  opacity: 1;
+}
+
+.more-dropdown > .more-btn[aria-expanded="true"] {
+  background-color: var(--panel2);
+}
+
+.more-btn .menu-line {
+  transform-origin: 8px 8px;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.more-btn[aria-expanded="true"] .menu-line-top {
+  transform: rotate(45deg) translateY(4px);
+}
+
+.more-btn[aria-expanded="true"] .menu-line-middle {
+  opacity: 0;
+  transform: scaleX(0.5);
+}
+
+.more-btn[aria-expanded="true"] .menu-line-bottom {
+  transform: rotate(-45deg) translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-btn .menu-line {
+    transition: none;
+  }
+}
+
+.more-dropdown .io-menu {
+  min-width: 220px;
+}
+
+.menu-version {
+  margin-top: 4px;
+  padding: 10px 12px 6px;
+  border-top: 1px solid var(--line2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* В браузерах с настраиваемым select само раскрытое меню тоже оформлено
    как меню действий. В остальных сохраняется системное управление выбором. */
 @supports (appearance: base-select) {
   select,
-  label.field select,
+  .field select,
   select::picker(select) {
     appearance: base-select;
   }

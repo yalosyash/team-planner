@@ -104,7 +104,28 @@
           accept="application/json,.json"
           hidden
         />
-        <button id="btnBackups">Версии</button>
+        <div class="io-dropdown more-dropdown">
+          <button
+            id="btnMore"
+            class="more-btn"
+            type="button"
+            title="Меню приложения"
+            aria-expanded="false"
+            aria-controls="moreMenu"
+          >
+            <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+              <path class="menu-line menu-line-top" d="M3 4h10" />
+              <path class="menu-line menu-line-middle" d="M3 8h10" />
+              <path class="menu-line menu-line-bottom" d="M3 12h10" />
+            </svg>
+            <span>Меню</span>
+          </button>
+          <div class="io-menu" id="moreMenu" hidden>
+            <button id="btnBackups" type="button">Резервные копии</button>
+            <button id="btnUpdates" type="button">Проверить обновления</button>
+            <div id="appVersion" class="menu-version"></div>
+          </div>
+        </div>
         <input
           type="file"
           id="fileImport"
@@ -117,7 +138,7 @@
     <aside class="queue-notice" id="queueNotice" role="status" hidden>
       <span
         >Задачи выстроены по порядку с начала релиза — дата в задачах больше не
-        вводится. Прежняя версия данных сохранена в «Версиях».</span
+        вводится. Прежняя версия данных сохранена в «Резервных копиях».</span
       >
       <button type="button">Понятно</button>
     </aside>
@@ -178,19 +199,19 @@
           <button class="ghost x" data-close>✕</button>
         </div>
         <div class="modal-b">
-          <label class="field">
-            Исполнитель
+          <div class="field">
+            <label for="tPerson">Исполнитель</label>
             <select id="tPerson"></select>
-          </label>
+          </div>
           <div class="row2">
-            <label class="field">
-              Тип
+            <div class="field">
+              <label for="tType">Тип</label>
               <select id="tType">
                 <option value="task">Задача</option>
                 <option value="vacation">Отпуск</option>
                 <option value="sick">Больничный</option>
               </select>
-            </label>
+            </div>
             <label class="field" id="tNumWrap">
               Номер задачи
               <input type="text" id="tNum" placeholder="1234" />
@@ -267,7 +288,7 @@
               id="tDesc"
               rows="1"
               maxlength="500"
-              placeholder="Краткое описание работы"
+              placeholder="Краткое описание задачи"
             ></textarea>
             <span class="counter" id="tDescCount">0 / 500</span>
           </label>
@@ -305,7 +326,7 @@
     <div class="modal-back" id="mBackups">
       <div class="modal">
         <div class="modal-h">
-          Версии данных
+          Резервные копии
           <button class="ghost x" data-close>✕</button>
         </div>
         <div class="modal-b">
@@ -377,7 +398,8 @@
             Сохранить текущие данные отдельно
           </button>
           <div class="hint">
-            Перед импортом автоматически создаётся резервная копия в «Версиях».
+            Перед импортом автоматически создаётся резервная копия в «Резервных
+            копиях».
           </div>
           <div id="riError" role="alert"></div>
         </div>
