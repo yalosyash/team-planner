@@ -1,14 +1,14 @@
 /* ============================================================
    core/theme.js — светлая и тёмная тема.
 
-   Тема живёт в двух местах: в state.theme (уезжает вместе с data.json)
-   и в localStorage (работает и при открытии с диска, и до первой
+   Тема хранится в preferences; state.theme обращается к этому документу.
+   localStorage служит кэшем до первой
    загрузки данных). При старте решает js/init/theme-boot.js, чтобы
    не было вспышки светлого фона; здесь — кнопка и синхронизация.
    ============================================================ */
 import { $ } from "./dom.js";
 import { render } from "./render.js";
-import { state, save } from "./storage.js";
+import { state, save, readOnly } from "./storage.js";
 import { rgba } from "./util.js";
 
 export const THEME_KEY = "team-planner-theme";
@@ -18,7 +18,7 @@ export function isDark() {
 }
 
 /* применить тему к документу; mirror — записать ещё и в localStorage */
-export function applyTheme(theme, mirror = true) {
+export function applyTheme(theme, mirror = !readOnly) {
   const next = theme === "dark" ? "dark" : "light";
   document.documentElement.dataset.theme = next;
   if (mirror) {
@@ -42,7 +42,7 @@ export function renderThemeBtn() {
 }
 
 /* Переключение по кнопке: цвет меняется сразу, выбор сохраняется
-   в state (уедет в data.json) и в localStorage. Доска перерисовывается:
+   в preferences через state и в кэше localStorage. Доска перерисовывается:
    заливка карточек считается в JS и зависит от темы. */
 function toggleTheme() {
   const next = isDark() ? "light" : "dark";
@@ -52,13 +52,12 @@ function toggleTheme() {
   render();
 }
 
-/* Применить тему, пришедшую вместе с данными (data.json / импорт). */
+/* Применить локальную тему после загрузки или замены рабочих данных. */
 export function syncThemeFromState() {
   if (state.theme === "dark" || state.theme === "light") {
     applyTheme(state.theme);
   } else {
-    // старые данные без темы — оставляем выбранную в браузере и запоминаем,
-    // чтобы дальше тема ехала вместе с data.json
+    // Значение по умолчанию также сохраняется только в preferences.
     state.theme = isDark() ? "dark" : "light";
     save();
   }

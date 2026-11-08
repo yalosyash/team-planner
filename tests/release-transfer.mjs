@@ -295,3 +295,35 @@ delete revisionData.tasks[0].title;
 revisionData.releases = [];
 assert.notEqual(importRevision(revisionData), revision);
 console.log("Release transfer: all checks passed");
+
+// Локальные поля не пересекают границу обмена даже во вложенных снимках.
+{
+  const { workingData } = await import("../app/js/core/storage-migration.js");
+  const board = structuredClone(sender);
+  const expected = workingData(board);
+  const contaminate = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach(contaminate);
+      return;
+    }
+    Object.values(value).forEach(contaminate);
+    Object.assign(value, {
+      theme: "dark",
+      activeId: "foreign",
+      calendar: { private: true },
+      queueNotice: true,
+      launcher: { private: true },
+    });
+  };
+  contaminate(board);
+  assert.deepEqual(workingData(board), expected);
+  const { packet } = exportRelease(board, "r");
+  assert.ok(
+    !/"(theme|activeId|calendar|queueNotice|launcher)":/.test(
+      JSON.stringify(packet),
+    ),
+  );
+  assert.deepEqual(workingData(expected), expected);
+  assert.throws(() => workingData({ ...expected, version: 999 }));
+}

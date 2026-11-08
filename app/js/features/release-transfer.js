@@ -1,3 +1,4 @@
+import { workingData } from "../core/storage-migration.js";
 import { $, esc, toast } from "../core/dom.js";
 import { state, replaceState, save, backend } from "../core/storage.js";
 import {
@@ -20,6 +21,28 @@ export function downloadJson(data, name) {
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export async function backupCurrentBoard() {
+  const before = JSON.stringify(workingData(state));
+  if (backend === "server") {
+    const response = await fetch("/api/backup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: before,
+    });
+    if (!response.ok || !(await response.json()).ok)
+      throw new Error(
+        "Не удалось создать резервную копию. Замена данных отменена.",
+      );
+  } else {
+    localStorage.setItem(BACKUP_KEY, before);
+    if (localStorage.getItem(BACKUP_KEY) !== before)
+      throw new Error("Не удалось создать резервную копию");
+  }
+  if (JSON.stringify(workingData(state)) !== before)
+    throw new Error(
+      "Данные изменились во время резервирования. Повторите операцию.",
+    );
 }
 function formatDate(value) {
   const [year, month, day] = value.split("-");
@@ -175,24 +198,8 @@ async function applyPending() {
       ]),
     );
     applyRelease(state, pending.packet, mapping); // проверяем выбор до резервирования
-    const before = JSON.stringify(state);
     button.disabled = true;
-    // Сохраняем именно состояние в памяти, включая ещё не записанные правки.
-    if (backend === "server") {
-      const response = await fetch("/api/backup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: before,
-      });
-      if (!response.ok || !(await response.json()).ok)
-        throw new Error(
-          "Не удалось создать резервную копию. Импорт отменён. Если сервер запущен до обновления кода, перезапустите его.",
-        );
-    } else {
-      localStorage.setItem(BACKUP_KEY, before);
-      if (localStorage.getItem(BACKUP_KEY) !== before)
-        throw new Error("Не удалось создать резервную копию");
-    }
+    await backupCurrentBoard();
     if (
       pending !== operation ||
       !$("#mReleaseImport").classList.contains("open")
@@ -203,7 +210,9 @@ async function applyPending() {
         "Данные изменились во время резервного копирования. Откройте файл заново.",
       );
     // Берём актуальный календарь и настройки, включая обновления за время запроса.
-    replaceState(applyRelease(state, pending.packet, mapping));
+    replaceState(applyRelease(state, pending.packet, mapping), {
+      selectIncoming: true,
+    });
     save();
     render();
     pending = null;
@@ -237,6 +246,9 @@ export function initReleaseTransfer() {
   });
   $("#riApply").addEventListener("click", applyPending);
   $("#riDownloadCurrent").addEventListener("click", () => {
-    downloadJson(state, exportFilename(state, { purpose: "before-import" }));
+    downloadJson(
+      workingData(state),
+      exportFilename(state, { purpose: "before-import" }),
+    );
   });
 }

@@ -1,49 +1,33 @@
 @echo off
-rem This file is UTF-8. cmd.exe parses .bat in the console code page, so the
-rem comments above chcp must stay ASCII; switch to 65001 first, then the
-rem Russian text below is read correctly.
+rem Keep ASCII before chcp: cmd.exe reads this UTF-8 file in the console code page.
 setlocal
 cd /d "%~dp0"
-
-rem Запоминаем кодовую страницу консоли и переходим на UTF-8, иначе русский
-rem текст ниже превращается в мусор. В конце вернём её обратно.
-rem chcp печатает "Активная кодовая страница: 866"; в других локалях
-rem бывает точка в конце, поэтому оставляем от ответа одни цифры.
 set "OLDPAGE="
 for /f "tokens=2 delims=:" %%P in ('chcp') do set "OLDPAGE=%%P"
 set "OLDPAGE=%OLDPAGE: =%"
 set "OLDPAGE=%OLDPAGE:.=%"
 chcp 65001 >nul
 
-rem Ярлык с иконкой на рабочем столе: у .bat своей иконки в Windows нет.
-rem Ждём завершения: при ошибке показываем причину в консоли.
-cscript.exe //nologo "%~dp0create-shortcut.vbs"
-if errorlevel 1 (
-  echo Не удалось создать ярлык на рабочем столе. Ошибка указана выше.
-  pause
-)
-
 for /f "delims=" %%N in ('where node 2^>nul') do (
   set "NODE=%%N"
   goto :have_node
 )
-
 echo Node.js не найден. Без него планировщик не запустится.
-echo.
-echo Установите Node.js (LTS-версию) с https://nodejs.org и запустите start.bat снова.
-echo Проверить установку: node -v
-echo.
+echo Установите Node.js LTS с https://nodejs.org и запустите start.bat снова.
 pause
 goto :done
 
 :have_node
-rem Запуск без консольного окна. Сервер работает в фоне и сам выключается,
-rem когда закрыта последняя вкладка планировщика (см. app/js/core/keepalive.js).
-rem Если сервер уже запущен, второй не поднимается - просто откроется браузер.
+rem Сначала подготовка хранения, затем одноразовый вопрос о ярлыке.
+cscript.exe //nologo "%~dp0create-shortcut.vbs" "%NODE%"
+if errorlevel 1 (
+  echo Запуск отменён: не удалось подготовить данные или настройки ярлыка.
+  pause
+  goto :done
+)
+rem Сервер работает без окна и завершается после закрытия последней вкладки.
 start "" wscript.exe //nologo "%~dp0start-hidden.vbs" "%NODE%"
 
 :done
-rem Возвращаем кодовую страницу, из которой запустили ярлык: иначе 65001
-rem осталась бы в консоли и мешала другим программам.
 if defined OLDPAGE chcp %OLDPAGE% >nul 2>nul
 exit /b

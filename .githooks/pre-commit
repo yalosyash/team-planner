@@ -1,9 +1,9 @@
 #!/bin/sh
 # Защита от случайного коммита личных данных.
 # Установка: git config core.hooksPath .githooks
-# Этот хук отклоняет коммит, если в него попали data/ или backups/.
+# Этот хук отклоняет коммит с данными, настройками или runtime.
 
-blocked=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)(data/|backups/)|(^|/)(data\.json|data_[^/]*\.json|team-planner-[^/]*\.json)$|(^|/)\.env($|\.)|\.(key|pem)$')
+blocked=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)(data/|backups/|settings/|runtime/)|(^|/)(data\.json|data_[^/]*\.json|team-planner-[^/]*\.json)$|(^|/)\.env($|\.)|\.(key|pem)$')
 
 if [ -n "$blocked" ]; then
   echo ""

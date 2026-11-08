@@ -4,6 +4,8 @@
 
 # вся папка с данными: data.json и backups/
 data/
+settings/
+runtime/
 
 # на случай, если данные окажутся в корне или рядом с кодом
 data.json

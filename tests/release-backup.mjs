@@ -19,7 +19,7 @@ vm.runInNewContext(
   source.slice(0, source.indexOf('process.on("SIGINT"')) +
     "\nmodule.exports = server;",
   {
-    require: createRequire(import.meta.url),
+    require: createRequire(new URL("../server.js", import.meta.url)),
     __dirname: directory,
     module,
     process: { argv: [], pid: process.pid },
@@ -36,7 +36,13 @@ try {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const disk = { people: [], releases: [], tasks: [], team: "На диске" };
+  const disk = {
+    version: 4,
+    people: [],
+    releases: [],
+    tasks: [],
+    team: "На диске",
+  };
   const memory = { ...disk, team: "Ещё не сохранённая правка" };
   fs.mkdirSync(path.join(directory, "data"));
   const dataFile = path.join(directory, "data/data.json");
@@ -75,7 +81,12 @@ try {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-  const withRelease = { ...disk, releases: [{ id: "r" }] };
+  const withRelease = {
+    ...disk,
+    releases: [
+      { id: "r", number: "1", start: "2026-11-02", end: "2026-11-30" },
+    ],
+  };
   const first = await write({
     data: withRelease,
     baseRevision: loaded.revision,
@@ -92,16 +103,60 @@ try {
   );
   assert.equal(
     (await write(withRelease)).status,
-    409,
+    400,
     "Old application tabs must also be rejected",
   );
   assert.deepEqual(JSON.parse(fs.readFileSync(dataFile)), disk);
-  const restore = (name) =>
-    fetch(origin + "/api/restore", {
+  const restore = async (name, baseRevision) => {
+    baseRevision ??= (await (await fetch(origin + "/api/data")).json())
+      .revision;
+    return fetch(origin + "/api/restore", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, baseRevision }),
     });
+  };
+  const staleRevision = (await (await fetch(origin + "/api/data")).json())
+    .revision;
+  const concurrent = await write({
+    data: { ...disk, team: "Concurrent" },
+    baseRevision: staleRevision,
+  });
+  assert.equal(concurrent.status, 200);
+  assert.equal(
+    (await restore(backups.backups[0].name, staleRevision)).status,
+    409,
+  );
+  assert.equal(JSON.parse(fs.readFileSync(dataFile)).team, "Concurrent");
+  const concurrentRevision = (await concurrent.json()).revision;
+  assert.equal(
+    (await write({ data: disk, baseRevision: concurrentRevision })).status,
+    200,
+  );
+  const mixed = {
+    ...memory,
+    theme: "dark",
+    activeId: "foreign",
+    calendar: { invalid: true },
+    queueNotice: true,
+  };
+  const cleanBackup = await (await post(mixed)).json();
+  assert.deepEqual(
+    JSON.parse(
+      fs.readFileSync(path.join(directory, "data/backups", cleanBackup.name)),
+    ),
+    memory,
+  );
+  const historicalName = "data_2020-01-01_00-00-00_historical.json";
+  const historicalPath = path.join(directory, "data/backups", historicalName);
+  const historicalBytes = JSON.stringify({ ...mixed, version: 3 });
+  fs.writeFileSync(historicalPath, historicalBytes);
+  assert.equal((await restore(historicalName)).status, 200);
+  assert.equal(fs.readFileSync(historicalPath, "utf8"), historicalBytes);
+  assert.deepEqual(JSON.parse(fs.readFileSync(dataFile)), memory);
+  const resetRevision = (await (await fetch(origin + "/api/data")).json())
+    .revision;
+  await write({ data: disk, baseRevision: resetRevision });
   const restored = await restore(backups.backups[0].name);
   assert.equal(restored.status, 200);
   const restoredResult = await restored.json();

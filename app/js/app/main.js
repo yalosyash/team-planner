@@ -12,6 +12,9 @@ import {
   setPendingLocal,
   state,
   save,
+  setStatus,
+  readOnly,
+  backend,
 } from "../core/storage.js";
 import { onRender, render } from "../core/render.js";
 import { initTheme, syncThemeFromState } from "../core/theme.js";
@@ -47,6 +50,21 @@ function ensureActiveRelease() {
 }
 
 (async function start() {
+  try {
+    await initStorage();
+  } catch (error) {
+    setStatus("error", error.message);
+    document
+      .querySelectorAll("button, input, select, textarea")
+      .forEach((el) => {
+        el.disabled = true;
+      });
+    const message = document.createElement("p");
+    message.setAttribute("role", "alert");
+    message.textContent = "Не удалось загрузить данные: " + error.message;
+    document.body.append(message);
+    return;
+  }
   initTheme();
   initModals();
   initTooltip();
@@ -57,13 +75,22 @@ function ensureActiveRelease() {
   initTask();
   initDataIo();
   initUpdates();
-  initKeepalive();
+  if (backend === "server") initKeepalive();
 
-  await initStorage();
   syncThemeFromState();
   ensureActiveRelease();
-  initCalendar();
+  if (!readOnly) initCalendar();
   render();
+  if (readOnly) {
+    document
+      .querySelectorAll("button, input, select, textarea")
+      .forEach((el) => {
+        if (el.id !== "btnExportAll" && !el.matches(".io-dropdown > button"))
+          el.disabled = true;
+      });
+    document.querySelector("#board").inert = true;
+    return;
+  }
 
   // если в браузере есть данные, отличающиеся от файла — предложим выбрать
   if (pendingLocal) {

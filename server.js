@@ -5,19 +5,18 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
-const { createHash } = require("crypto");
-
-function revision(data) {
-  return createHash("sha256").update(JSON.stringify(data)).digest("hex");
-}
+const { createFileStore } = require("./lib/file-store.cjs");
+const { createStorageApi } = require("./lib/storage-api.cjs");
+const { prepareInstallation } = require("./lib/installation.cjs");
 
 const ROOT = __dirname;
 const APP = path.join(ROOT, "app"); // публичный код приложения
 const DATA_DIR = path.join(ROOT, "data"); // личные данные (в git не попадают)
 const DATA = path.join(DATA_DIR, "data.json");
 const BACKUPS = path.join(DATA_DIR, "backups");
-const PID_FILE = path.join(DATA_DIR, "server.pid"); // чтобы найти фоновый сервер
-const LOG = path.join(DATA_DIR, "server.log"); // журнал (окно-то скрытое)
+const RUNTIME = path.join(ROOT, "runtime");
+const PID_FILE = path.join(RUNTIME, "server.pid"); // чтобы найти фоновый сервер
+const LOG = path.join(RUNTIME, "server.log"); // журнал (окно-то скрытое)
 const KEEP = 20; // сколько версий хранить
 const SNAP_GAP = 15 * 1000; // не чаще одного снимка в 15 сек при сохранении
 const CLOSE_GRACE = 10 * 1000; // пауза перед остановкой, когда вкладок не осталось
@@ -32,11 +31,12 @@ const STOP_CONFIRM = 60 * 1000; // вторая проверка перед ос
 // В нём сервер сам останавливается, когда закрыта последняя вкладка приложения.
 const HIDDEN = process.argv.includes("--hidden");
 
-// В скрытом режиме сообщения некуда печатать — пишем их в data/server.log
-if (HIDDEN) {
+// В скрытом режиме сообщения некуда печатать — пишем их в runtime/server.log
+function initLog() {
+  if (!HIDDEN) return;
   const say = (...args) => {
     try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.mkdirSync(RUNTIME, { recursive: true });
       if (fs.existsSync(LOG) && fs.statSync(LOG).size > 1024 * 1024) {
         fs.writeFileSync(LOG, ""); // журнал не должен расти бесконечно
       }
@@ -70,18 +70,6 @@ function stamp() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
 
-function writeAtomic(file, body) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + ".tmp";
-  fs.writeFileSync(tmp, body, "utf8");
-  try {
-    fs.renameSync(tmp, file);
-  } catch (e) {
-    fs.copyFileSync(tmp, file);
-    fs.rmSync(tmp, { force: true });
-  }
-}
-
 function validShape(o) {
   return (
     o &&
@@ -101,12 +89,19 @@ function snapshot(reason, force) {
     const body = fs.readFileSync(DATA, "utf8");
     if (!body.trim()) return;
     JSON.parse(body); // не бэкапим битый файл
-    const name = `data_${stamp()}${reason ? "_" + reason : ""}.json`;
-    fs.writeFileSync(path.join(BACKUPS, name), body, "utf8");
+    const name = `data_${stamp()}_${reason || "snapshot"}_${require("node:crypto").randomUUID()}.json`;
+    const fd = fs.openSync(path.join(BACKUPS, name), "wx");
+    try {
+      fs.writeFileSync(fd, body, "utf8");
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
     lastSnap = now;
     prune();
   } catch (e) {
     console.error("Снимок не создан:", e.message);
+    throw e;
   }
 }
 
@@ -156,12 +151,16 @@ let stopTimer = null;
 let finalTimer = null;
 let used = false; // хотя бы одна вкладка когда-либо подключалась
 
-function shutdown(reason) {
+function shutdown(reason, exitCode = 0) {
   try {
-    if (fs.existsSync(PID_FILE)) fs.rmSync(PID_FILE, { force: true });
+    if (
+      fs.existsSync(PID_FILE) &&
+      fs.readFileSync(PID_FILE, "utf8").trim() === String(process.pid)
+    )
+      fs.rmSync(PID_FILE, { force: true });
   } catch (e) {}
-  server.close(() => process.exit(0));
-  setTimeout(() => process.exit(0), 1000).unref();
+  server.close(() => process.exit(exitCode));
+  setTimeout(() => process.exit(exitCode), 1000).unref();
 }
 
 function scheduleStop(explicit) {
@@ -222,8 +221,21 @@ setInterval(() => {
   if (HIDDEN && used && lives.size === 0) scheduleStop(false);
 }, 30 * 1000).unref();
 
-const server = http.createServer((req, res) => {
-  const url = decodeURIComponent((req.url || "").split("?")[0]);
+const store = createFileStore(ROOT, {
+  beforeWrite: (kind) => {
+    if (kind === "data") snapshot("auto", false);
+  },
+});
+const storageApi = createStorageApi(ROOT, { store });
+const server = http.createServer(async (req, res) => {
+  let url;
+  try {
+    url = decodeURIComponent((req.url || "").split("?")[0]);
+  } catch {
+    res.writeHead(400);
+    res.end("Invalid URL");
+    return;
+  }
   if (url.startsWith("/api/")) cancelStop(); // вкладка жива — не выключаемся
 
   // Фиксированный источник: браузеру не требуется CORS у внешнего API.
@@ -288,34 +300,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- чтение данных ---
-  if (url === "/api/data" && req.method === "GET") {
-    let data = null;
-    try {
-      if (fs.existsSync(DATA)) data = JSON.parse(fs.readFileSync(DATA, "utf8"));
-    } catch (e) {
-      console.error("Не удалось прочитать data.json:", e.message);
-    }
-    res.writeHead(200, {
-      "Content-Type": TYPES[".json"],
-      "Cache-Control": "no-store",
-    });
-    res.end(JSON.stringify({ data, revision: revision(data) }));
-    return;
-  }
+  if (await storageApi(req, res)) return;
 
   // --- запись данных ---
-  if ((url === "/api/data" || url === "/api/backup") && req.method === "POST") {
+  if (url === "/api/backup" && req.method === "POST") {
     let body = "";
     let tooBig = false;
     req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > MAX_BODY) {
-        tooBig = true;
-        req.destroy();
-      }
+      if (!tooBig) body += chunk;
+      if (Buffer.byteLength(body) > MAX_BODY) tooBig = true;
     });
-    req.on("end", () => {
+    req.on("end", async () => {
       if (tooBig) {
         res.writeHead(413);
         res.end('{"ok":false,"error":"too big"}');
@@ -323,40 +318,30 @@ const server = http.createServer((req, res) => {
       }
       try {
         const packet = JSON.parse(body);
-        const obj = url === "/api/data" && packet.data ? packet.data : packet;
-        if (!validShape(obj)) throw new Error("bad shape");
+        const obj = await require("./lib/file-migration.cjs").prepareBoard(
+          packet,
+        );
         if (url === "/api/backup") {
           fs.mkdirSync(BACKUPS, { recursive: true });
           const name = `data_${stamp()}_release_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.json`;
-          fs.writeFileSync(
-            path.join(BACKUPS, name),
-            JSON.stringify(obj, null, 2),
-            { encoding: "utf8", flag: "wx" },
-          );
+          const target = path.join(BACKUPS, name);
+          const encoded = JSON.stringify(obj, null, 2);
+          const fd = fs.openSync(target, "wx");
+          try {
+            fs.writeFileSync(fd, encoded, "utf8");
+            fs.fsyncSync(fd);
+          } finally {
+            fs.closeSync(fd);
+          }
+          if (fs.readFileSync(target, "utf8") !== encoded)
+            throw new Error("backup verification failed");
           prune();
           res.writeHead(200, { "Content-Type": TYPES[".json"] });
           res.end(JSON.stringify({ ok: true, name }));
           return;
         }
-        const current = fs.existsSync(DATA)
-          ? JSON.parse(fs.readFileSync(DATA, "utf8"))
-          : null;
-        if (packet.baseRevision !== revision(current)) {
-          res.writeHead(409, { "Content-Type": TYPES[".json"] });
-          res.end(
-            JSON.stringify({
-              ok: false,
-              error: "Данные изменились в другой вкладке. Обновите страницу.",
-            }),
-          );
-          return;
-        }
-        snapshot("auto", false); // версия «до изменения», не чаще раза в минуту
-        writeAtomic(DATA, JSON.stringify(obj, null, 2));
-        res.writeHead(200, { "Content-Type": TYPES[".json"] });
-        res.end(JSON.stringify({ ok: true, revision: revision(obj) }));
       } catch (e) {
-        res.writeHead(400, { "Content-Type": TYPES[".json"] });
+        res.writeHead(e.status || 400, { "Content-Type": TYPES[".json"] });
         res.end(JSON.stringify({ ok: false, error: e.message }));
       }
     });
@@ -376,10 +361,21 @@ const server = http.createServer((req, res) => {
   // --- восстановление из версии ---
   if (url === "/api/restore" && req.method === "POST") {
     let body = "";
-    req.on("data", (c) => (body += c));
-    req.on("end", () => {
+    let tooBig = false;
+    req.on("data", (c) => {
+      if (!tooBig) body += c;
+      if (Buffer.byteLength(body) > MAX_BODY) tooBig = true;
+    });
+    req.on("end", async () => {
       try {
-        const { name } = JSON.parse(body || "{}");
+        if (tooBig) {
+          res.writeHead(413);
+          res.end(JSON.stringify({ ok: false, error: "too big" }));
+          return;
+        }
+        const { name, baseRevision } = JSON.parse(body || "{}");
+        if (typeof baseRevision !== "string")
+          throw new Error("baseRevision required");
         if (
           typeof name !== "string" ||
           !NAME_RE.test(name) ||
@@ -390,14 +386,20 @@ const server = http.createServer((req, res) => {
         }
         const src = path.join(BACKUPS, name);
         if (!fs.existsSync(src)) throw new Error("not found");
-        const data = JSON.parse(fs.readFileSync(src, "utf8"));
+        const raw = JSON.parse(fs.readFileSync(src, "utf8"));
+        const data = await require("./lib/file-migration.cjs").prepareBoard(
+          raw,
+        );
         if (!validShape(data)) throw new Error("bad backup");
-        snapshot("before-restore", true); // текущее состояние тоже сохраняем
-        writeAtomic(DATA, JSON.stringify(data, null, 2));
+        const restored = await (
+          await store
+        ).write("data", data, baseRevision, () =>
+          snapshot("before-restore", true),
+        );
         res.writeHead(200, { "Content-Type": TYPES[".json"] });
-        res.end(JSON.stringify({ ok: true, data, revision: revision(data) }));
+        res.end(JSON.stringify({ ok: true, ...restored }));
       } catch (e) {
-        res.writeHead(400, { "Content-Type": TYPES[".json"] });
+        res.writeHead(e.status || 400, { "Content-Type": TYPES[".json"] });
         res.end(JSON.stringify({ ok: false, error: e.message }));
       }
     });
@@ -406,7 +408,15 @@ const server = http.createServer((req, res) => {
 
   if (url === "/api/health") {
     res.writeHead(200, { "Content-Type": TYPES[".json"] });
-    res.end(JSON.stringify({ ok: true, dataFile: DATA, backupsDir: BACKUPS }));
+    res.end(
+      JSON.stringify({
+        ok: true,
+        storageVersion: 4,
+        pid: process.pid,
+        dataFile: DATA,
+        backupsDir: BACKUPS,
+      }),
+    );
     return;
   }
 
@@ -450,7 +460,7 @@ const server = http.createServer((req, res) => {
     APP,
     path.normalize(file).replace(/^(\.\.[/\\])+/, ""),
   );
-  if (!full.startsWith(APP)) {
+  if (!full.startsWith(APP + path.sep)) {
     res.writeHead(403);
     res.end("forbidden");
     return;
@@ -481,10 +491,16 @@ function start(port, attempt = 0) {
     }
   });
   server.listen(port, "127.0.0.1", () => {
-    const addr = `http://127.0.0.1:${port}`;
-    snapshot("start", true); // снимок при каждом запуске
+    const addr = `http://127.0.0.1:${server.address().port}`;
     try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+      snapshot("start", true);
+    } catch (e) {
+      console.error("Запуск отменён:", e.message);
+      shutdown("backup-failed", 1);
+      return;
+    }
+    try {
+      fs.mkdirSync(RUNTIME, { recursive: true });
       fs.writeFileSync(PID_FILE, String(process.pid), "utf8");
     } catch (e) {}
     console.log("");
@@ -501,7 +517,7 @@ function start(port, attempt = 0) {
       console.log("  Остановить: Ctrl+C или просто закройте окно.");
     }
     console.log("");
-    exec('start "" ' + addr, () => {});
+    if (!process.argv.includes("--no-open")) exec('start "" ' + addr, () => {});
 
     // Страховка: если браузер так и не открылся, сервер не должен висеть
     // в памяти незаметно до перезагрузки.
@@ -550,14 +566,27 @@ function findRunning(port, attempt, done) {
 process.on("SIGINT", () => shutdown("sigint"));
 process.on("SIGTERM", () => shutdown("sigterm"));
 
-findRunning(8787, 0, (port) => {
+const portArg = process.argv.find((v) => v.startsWith("--port="));
+const BASE_PORT = portArg ? Number(portArg.slice(7)) : 8787;
+if (!Number.isInteger(BASE_PORT) || BASE_PORT < 0 || BASE_PORT > 65535)
+  throw new Error("Invalid port");
+findRunning(BASE_PORT, 0, (port) => {
   if (port) {
     const addr = `http://127.0.0.1:${port}`;
     console.log("Сервер уже запущен — открываю " + addr);
-    exec('start "" ' + addr, () => {});
+    if (!process.argv.includes("--no-open")) exec('start "" ' + addr, () => {});
     // даём браузеру время открыться, затем выходим
     setTimeout(() => process.exit(0), 1500);
     return;
   }
-  start(8787);
+  prepareInstallation(ROOT, { store })
+    .then(() => {
+      initLog();
+      start(BASE_PORT);
+    })
+    .catch((error) => {
+      initLog();
+      console.error("Запуск отменён:", error.message);
+      process.exit(1);
+    });
 });

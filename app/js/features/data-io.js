@@ -1,3 +1,4 @@
+import { workingData } from "../core/storage-migration.js";
 /* ============================================================
    features/data-io.js — экспорт, импорт и версии данных.
    ============================================================ */
@@ -5,47 +6,42 @@ import { $, toast } from "../core/dom.js";
 import {
   initReleaseTransfer,
   BACKUP_KEY,
+  backupCurrentBoard,
   downloadJson,
 } from "./release-transfer.js";
 import { exportFilename } from "../core/export-filename.js";
 import {
   backend,
-  migrateTasks,
   replaceState,
   save,
   state,
   setServerRevision,
+  serverRevision,
 } from "../core/storage.js";
 import { render } from "../core/render.js";
-import { syncThemeFromState } from "../core/theme.js";
 import { closeModal, openModal } from "../ui/modal.js";
 
 function exportJson() {
-  downloadJson(state, exportFilename(state));
+  downloadJson(workingData(state), exportFilename(state));
   toast("Файл сохранён");
 }
 
-function importJson(event) {
+async function importJson(event) {
   const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const data = JSON.parse(reader.result);
-      if (!data.people || !data.releases || !data.tasks) throw new Error();
-      replaceState(migrateTasks(data));
-      if (!state.activeId && state.releases[0])
-        state.activeId = state.releases[0].id;
-      syncThemeFromState(); // тема из файла, если она там была
-      save();
-      render();
-      toast("Данные загружены");
-    } catch (e) {
-      alert("Не удалось прочитать файл");
-    }
-  };
-  reader.readAsText(file);
   event.target.value = "";
+  if (!file) return;
+  try {
+    if (file.size > 5 * 1024 * 1024)
+      throw new Error("Файл слишком большой (максимум 5 МБ)");
+    const data = workingData(JSON.parse(await file.text()));
+    await backupCurrentBoard();
+    replaceState(data);
+    save();
+    render();
+    toast("Данные загружены");
+  } catch (e) {
+    alert("Не удалось загрузить данные: " + e.message);
+  }
 }
 
 /* --- версии (автобэкапы) --- */
@@ -60,21 +56,21 @@ async function openBackups() {
     const raw = localStorage.getItem(BACKUP_KEY);
     if (raw) {
       hint.textContent =
-        "Резервная копия перед последним импортом релиза (все данные).";
+        "Резервная копия перед последней заменой данных доски.";
       const restore = document.createElement("button");
       restore.textContent = "Восстановить";
-      restore.onclick = () => {
+      restore.onclick = async () => {
         if (
           !confirm(
-            "Восстановить все данные из копии перед импортом? Текущие данные будут скачаны отдельным файлом.",
+            "Восстановить все данные из копии перед импортом? Текущая доска будет сохранена в резервной копии.",
           )
         )
           return;
         try {
-          const restored = migrateTasks(JSON.parse(raw));
-          downloadJson(state, exportFilename(state, { purpose: "before-restore" }));
+          const restored = workingData(JSON.parse(raw));
+          await backupCurrentBoard();
           replaceState(restored);
-          syncThemeFromState();
+
           save();
           render();
           closeModal("#mBackups");
@@ -134,19 +130,26 @@ async function restoreBackup(name) {
     return;
 
   try {
+    const baseRevision = serverRevision();
+    await backupCurrentBoard();
+    const before = JSON.stringify(workingData(state));
     const response = await fetch("/api/restore", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, baseRevision }),
     });
     const result = await response.json();
     if (!result.ok) throw new Error(result.error);
 
-    setServerRevision(result.revision);
-    replaceState(migrateTasks(result.data));
+    if (JSON.stringify(workingData(state)) !== before)
+      throw new Error(
+        "Доска восстановлена на сервере, но локальные правки сохранены в памяти. Обновите страницу после экспорта правок.",
+      );
+    setServerRevision(result.revision, result.data);
+    replaceState(workingData(result.data));
     if (state.releases.length && !state.activeId)
       state.activeId = state.releases[0].id;
-    syncThemeFromState(); // версия хранит и тему
+    save();
     render();
     toast(
       `Восстановлено: релизов — ${state.releases.length}, задач — ${state.tasks.length}`,

@@ -1,90 +1,95 @@
 import { bindCalendar } from "./calendar.js";
-/* ============================================================
-   core/storage.js — состояние приложения и его сохранение.
-
-   Данные живут либо на сервере (data/data.json), либо, если сервера
-   нет, в localStorage браузера. Оба режима пишутся одинаково —
-   через markDirty() с небольшой задержкой.
-   ============================================================ */
-import { addDays, isWeekend } from "./dates.js";
 import { round } from "./util.js";
 import { planPerson } from "./plan.js";
 import { isAbsence } from "./schedule.js";
-import { taskLabels } from "./task-labels.js";
+import { createBrowserStore, createHttpStore } from "./split-storage.js";
+import {
+  defaults,
+  validateDocument,
+  canonicalJson,
+  StorageError,
+  STORAGE_KEYS,
+} from "./storage-schema.js";
+import { workingData, prepareStorageMigration } from "./storage-migration.js";
+export { migrateTasks } from "./task-migration.js";
 
-const KEY = "team-planner-v1";
-
-export let state = {
-  team: "",
-  people: [],
-  releases: [],
-  tasks: [],
-  activeId: null,
-  theme: null, // 'light' | 'dark' — переезжает вместе с data.json
-};
-
-bindCalendar(() => state.calendar);
-
-export let backend = null; // 'server' | 'browser'
-
-/* данные из браузера, отличающиеся от файла: спросим после отрисовки */
+// Потребители работают с привычным state, но локальные свойства не входят
+// в JSON доски. Их владельцы — отдельные документы preferences и system.
+let preferences = defaults("preferences"),
+  system = defaults("system");
+function attach(board) {
+  for (const [name, target] of [
+    ["theme", preferences],
+    ["activeId", preferences],
+    ["calendar", system],
+    ["queueNotice", system],
+  ]) {
+    Object.defineProperty(board, name, {
+      configurable: true,
+      enumerable: false,
+      get: () => target[name],
+      set: (value) => {
+        target[name] = value;
+      },
+    });
+  }
+  return board;
+}
+export let state = attach(defaults("data"));
+bindCalendar(() => system.calendar);
+export let backend = null;
+export let readOnly = false;
 export let pendingLocal = null;
-
-let writeTimer = null;
-let saving = false;
-let dirtyWhileSaving = false;
-let serverRevision = null;
-let conflict = false;
-
-export function setServerRevision(value) {
-  serverRevision = value;
-  conflict = false;
+let store,
+  ready = false,
+  timer = null,
+  saving = null,
+  again = false,
+  failed = false;
+const packets = {},
+  blocked = new Set();
+const recoveryPrefix = "team-planner-unsaved-v4:";
+const recoveryKey =
+  recoveryPrefix +
+  (globalThis.crypto?.randomUUID?.() || Date.now() + "-" + Math.random());
+let offeredKey = null;
+export const valid = (v) =>
+  !!v && ["people", "releases", "tasks"].every((k) => Array.isArray(v[k]));
+export function setPendingLocal(value) {
+  pendingLocal = value;
 }
-
-function serverPacket() {
-  return JSON.stringify({ data: state, baseRevision: serverRevision });
+export function setServerRevision(revision, data = state) {
+  const { theme, activeId, calendar, queueNotice, ...board } = data;
+  packets.data = {
+    data: prepareStorageMigration({ data: JSON.parse(JSON.stringify(board)) })
+      .data,
+    revision,
+  };
+  blocked.delete("data");
 }
-
-/* Запись не удалась. Держим это в памяти, чтобы индикатор не стал
-   зелёным просто потому, что сервер ожил, — данные-то всё ещё не
-   на диске. */
-let pendingFailed = false;
-
-export function valid(data) {
-  return (
-    data &&
-    Array.isArray(data.people) &&
-    Array.isArray(data.releases) &&
-    Array.isArray(data.tasks)
-  );
+function ensureActive() {
+  if (!state.releases.some((r) => r.id === preferences.activeId))
+    preferences.activeId = state.releases[0]?.id ?? null;
 }
-
-/* Заменить состояние целиком (импорт, восстановление версии, выбор
-   браузерной копии). Прямое присваивание импортированной переменной
-   в ES-модулях нельзя, поэтому для этого есть отдельная функция. */
-export function replaceState(next) {
-  state = next;
+export function serverRevision() {
+  return packets.data?.revision;
+}
+export function replaceState(next, { selectIncoming = false } = {}) {
+  const { theme, activeId, calendar, queueNotice, ...working } = next;
+  const board = workingData(working);
+  if (!board) throw new StorageError("Нет данных доски");
+  if (selectIncoming && Object.hasOwn(next, "activeId"))
+    preferences.activeId = next.activeId;
+  state = attach(board);
+  ensureActive();
   return state;
 }
-
-export function setPendingLocal(next) {
-  pendingLocal = next;
-}
-
-/* Статус места хранения в шапке */
 export function setStatus(mode, text) {
   const el = document.getElementById("storeStatus");
   if (!el) return;
-  const cls =
-    mode === "server"
-      ? "on"
-      : mode === "browser"
-        ? "warn"
-        : mode === "error"
-          ? "err"
-          : "";
-  el.className = "store " + cls;
-  el.title = mode === "server" ? "Сохранено в data.json" : text;
+  el.className =
+    "store " + ({ server: "on", browser: "warn", error: "err" }[mode] || "");
+  el.title = text;
   const dot = document.createElement("span");
   dot.className = "sdot";
   const label = document.createElement("span");
@@ -92,196 +97,272 @@ export function setStatus(mode, text) {
   label.textContent = text;
   el.replaceChildren(dot, label);
 }
-
-/* Есть ли правки, которые не дошли до диска. По этому признаку сигнал
-   вкладки (core/keepalive.js) решает, можно ли вернуть зелёный индикатор:
-   сервер может отвечать, но последняя запись так и не прошла. */
+function documents() {
+  ensureActive();
+  return {
+    data: validateDocument("data", JSON.parse(JSON.stringify(state))),
+    preferences: validateDocument("preferences", structuredClone(preferences)),
+    system: validateDocument("system", structuredClone(system)),
+  };
+}
+const equal = (a, b) => canonicalJson(a) === canonicalJson(b);
 export function hasUnsaved() {
-  return !!writeTimer || saving || dirtyWhileSaving || pendingFailed;
+  return !!timer || !!saving || again || failed;
 }
-
-export function markDirty() {
-  if (saving) dirtyWhileSaving = true;
-  setStatus("", "Сохранение…");
-  clearTimeout(writeTimer);
-  writeTimer = setTimeout(persist, 500);
-}
-
-/* Привычный для вызывающего кода синоним: «данные изменились» */
-export function save() {
-  markDirty();
-}
-
-export function persist() {
-  if (backend === "server") persistServer();
-  else if (backend === "browser") persistBrowser();
-}
-
-/* Сохранить немедленно — вызывается при закрытии вкладки, чтобы
-   последнее изменение (те самые 0.5 сек задержки) не потерялось. */
-function flushBeacon() {
-  if (!hasUnsaved()) return;
-  clearTimeout(writeTimer);
-  writeTimer = null;
-  if (backend === "browser") {
-    persistBrowser();
-    return;
-  }
-  if (backend !== "server") return;
+function cacheBoard() {
+  if (!ready) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch (e) {}
-  // Уже отправленный keepalive-запрос завершится и после закрытия страницы.
-  if (conflict || (saving && !dirtyWhileSaving)) return;
-  try {
-    navigator.sendBeacon(
-      "/api/data",
-      new Blob([serverPacket()], { type: "application/json" }),
+    localStorage.setItem(
+      recoveryKey,
+      JSON.stringify({ data: state, savedAt: Date.now() }),
     );
-  } catch (e) {}
+  } catch {}
 }
-
-window.addEventListener("pagehide", flushBeacon);
-
-export function persistServer() {
-  clearTimeout(writeTimer);
-  writeTimer = null;
-  if (conflict) {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(state));
-    } catch (e) {}
+function clearRecovery() {
+  try {
+    localStorage.removeItem(recoveryKey);
+    if (offeredKey) localStorage.removeItem(offeredKey);
+  } catch {}
+  offeredKey = null;
+}
+export function markDirty() {
+  if (!ready) return;
+  if (readOnly) {
     setStatus(
       "error",
-      "Данные изменились в другой вкладке — обновите страницу",
+      "Доступно только чтение и экспорт: браузер не поддерживает безопасную запись",
     );
     return;
   }
-  if (saving) {
-    dirtyWhileSaving = true;
-    return;
+  if (saving) again = true;
+  cacheBoard();
+  setStatus("", "Сохранение…");
+  clearTimeout(timer);
+  timer = setTimeout(persist, 500);
+}
+export const save = markDirty;
+async function writeSystem(next) {
+  const base = packets.system;
+  const patch = Object.fromEntries(
+    ["calendar", "queueNotice"]
+      .filter((k) => !equal(next[k], base.data[k]))
+      .map((k) => [k, next[k]]),
+  );
+  if (!Object.keys(patch).length) return base;
+  try {
+    return await store.patch(patch, base.revision);
+  } catch (e) {
+    if (e.status !== 409) throw e;
+    const fresh = await store.read("system");
+    if (Object.keys(patch).some((k) => !equal(fresh.data[k], base.data[k])))
+      throw e;
+    // Launcher изменил другую секцию: повторяем только непересекающийся patch.
+    return store.patch(patch, fresh.revision);
   }
-  saving = true;
-  fetch("/api/data", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: serverPacket(),
-    keepalive: true,
-  })
-    .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-    .then((result) => {
-      serverRevision = result.revision;
-      pendingFailed = false;
-      setStatus("server", "Сохранено");
-      dropBrowserCopy();
-    })
-    .catch((error) => {
-      conflict = error.status === 409;
-      // на диск не легло — хотя бы не теряем правки при перезагрузке вкладки:
-      // при следующем старте приложение предложит взять их из браузера
-      pendingFailed = true;
-      try {
-        localStorage.setItem(KEY, JSON.stringify(state));
-      } catch (e) {}
+}
+export function persist() {
+  clearTimeout(timer);
+  timer = null;
+  if (!ready || readOnly) return Promise.resolve();
+  if (saving) {
+    again = true;
+    return saving;
+  }
+  let next;
+  try {
+    next = documents();
+  } catch (e) {
+    failed = true;
+    setStatus("error", e.message);
+    return Promise.resolve();
+  }
+  failed = false;
+  const operations = Object.keys(next).map(async (kind) => {
+    if (blocked.has(kind)) {
+      failed = true;
       setStatus(
         "error",
-        conflict
-          ? "Данные изменились в другой вкладке — обновите страницу"
-          : "Нет подключения — данные не сохранены",
+        "Данные изменились в другой вкладке — обновите страницу",
       );
+      return;
+    }
+    if (equal(next[kind], packets[kind].data ?? defaults(kind))) return;
+    try {
+      const result =
+        kind === "system"
+          ? await writeSystem(next[kind])
+          : await store.write(kind, next[kind], packets[kind].revision);
+      packets[kind] = result;
+      if (kind === "system") {
+        // Не подменять календарь, изменившийся в памяти за время запроса.
+        for (const k of Object.keys(result.data))
+          if (!["calendar", "queueNotice"].includes(k))
+            system[k] = result.data[k];
+      }
+    } catch (e) {
+      failed = true;
+      if (e.status === 409) blocked.add(kind);
+      setStatus(
+        "error",
+        e.status === 409
+          ? "Данные изменились в другой вкладке — обновите страницу"
+          : e.message,
+      );
+    }
+  });
+  saving = Promise.all(operations)
+    .then(() => {
+      if (!failed) {
+        clearRecovery();
+        setStatus(
+          backend,
+          backend === "server" ? "Сохранено" : "Хранение: в браузере",
+        );
+      } else cacheBoard();
     })
     .finally(() => {
-      saving = false;
-      if (dirtyWhileSaving) {
-        dirtyWhileSaving = false;
-        persistServer();
+      saving = null;
+      if (again) {
+        again = false;
+        return persist();
       }
     });
+  return saving;
 }
-
-/* Когда данные легли на диск, браузерная копия больше не нужна: иначе при
-   старте приложение будет каждый раз спрашивать «данные разные». */
-function dropBrowserCopy() {
-  if (backend !== "server") return;
-  try {
-    localStorage.removeItem(KEY);
-  } catch (e) {}
+export const persistServer = persist;
+function flush() {
+  if (!hasUnsaved() || !ready || readOnly) return;
+  cacheBoard();
+  // Уже отправленные keepalive-запросы не дублируем со старой ревизией.
+  if (saving) return;
+  if (backend === "server") {
+    const next = documents();
+    for (const kind of Object.keys(next)) {
+      if (
+        blocked.has(kind) ||
+        equal(next[kind], packets[kind].data ?? defaults(kind))
+      )
+        continue;
+      const body =
+        kind === "system"
+          ? {
+              patch: Object.fromEntries(
+                ["calendar", "queueNotice"]
+                  .filter((k) => !equal(next.system[k], packets.system.data[k]))
+                  .map((k) => [k, next.system[k]]),
+              ),
+              baseRevision: packets.system.revision,
+            }
+          : { data: next[kind], baseRevision: packets[kind].revision };
+      try {
+        navigator.sendBeacon(
+          "/api/" + kind,
+          new Blob([JSON.stringify(body)], { type: "application/json" }),
+        );
+      } catch {}
+    }
+  } else void persist();
 }
-
-function persistBrowser() {
-  clearTimeout(writeTimer);
-  writeTimer = null;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-    pendingFailed = false;
-    setStatus("browser", "Хранение: в браузере (сервер не найден)");
-  } catch (e) {
-    pendingFailed = true;
-    setStatus("error", "Не удалось сохранить в браузере");
-  }
-}
+window.addEventListener("pagehide", flush);
 
 export async function initStorage() {
-  setStatus("", "проверка…");
-  let initial = null;
-  let legacy = false;
-  let localLegacy = false;
-  try {
-    const r = await fetch("/api/data", { cache: "no-store" });
-    if (r.ok) {
+  ready = false;
+  readOnly = false;
+  pendingLocal = null;
+  offeredKey = null;
+  blocked.clear();
+  setStatus("", "Загрузка данных…");
+  // Только file:// либо явный 404 означают браузерный режим. Ошибка
+  // работающего API или сети не должна открывать пустую локальную доску.
+  if (globalThis.location?.protocol === "file:") backend = "browser";
+  else {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    if (response.status === 404) backend = "browser";
+    else {
+      if (!response.ok)
+        throw new StorageError("Сервер недоступен. Перезапустите планировщик.");
+      const health = await response.json();
+      if (health.storageVersion !== 4)
+        throw new StorageError(
+          "Сервер работает со старым кодом. Закройте планировщик и запустите снова.",
+        );
       backend = "server";
-      const j = await r.json();
-      setServerRevision(j.revision);
-      initial = valid(j.data) ? j.data : null;
     }
-  } catch (e) {
-    backend = null;
   }
-
-  if (!backend) {
-    // сервер недоступен — работаем локально
-    backend = "browser";
+  store = backend === "server" ? createHttpStore() : createBrowserStore();
+  if (backend === "browser") {
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (valid(s)) initial = s;
-      }
-    } catch (e) {}
-  }
-
-  if (initial) {
-    legacy = !(initial.version >= 3);
-    state = migrateTasks(initial);
-  }
-
-  // предупредить, если в файле и в браузере разные данные
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const local = JSON.parse(raw);
-      if (valid(local)) {
-        localLegacy = !(local.version >= 3);
-        // сравниваем уже в одной модели, иначе миграция даст ложное «разные»
-        migrateTasks(local);
-        if (!initial) {
-          state = local; // файла нет — берём из браузера
-          legacy = localLegacy;
-        } else if (
-          JSON.stringify(local.tasks) !== JSON.stringify(state.tasks) ||
-          JSON.stringify(local.releases) !== JSON.stringify(state.releases) ||
-          JSON.stringify(local.people) !== JSON.stringify(state.people) ||
-          JSON.stringify(local.calendar || {}) !==
-            JSON.stringify(state.calendar || {})
-        ) {
-          pendingLocal = local; // разные — спросим после отрисовки
-        }
-      }
+      await store.migrate();
+    } catch (e) {
+      if (e.code === "READ_ONLY") readOnly = true;
+      else throw e;
     }
-  } catch (e) {}
-
-  if (backend === "server") setStatus("server", "Сохранено");
-  else setStatus("browser", "Хранение: в браузере (сервер не найден)");
-  return { legacy, localLegacy };
+  }
+  for (const kind of ["data", "preferences", "system"])
+    packets[kind] = await store.read(kind);
+  if (readOnly) {
+    const parse = (key) => {
+      const raw = localStorage.getItem(key);
+      return raw === null ? null : JSON.parse(raw);
+    };
+    const preview = prepareStorageMigration({
+      data: parse(STORAGE_KEYS.data) ?? parse("team-planner-v1"),
+      preferences: parse(STORAGE_KEYS.preferences),
+      system: parse(STORAGE_KEYS.system),
+      theme: localStorage.getItem("team-planner-theme"),
+    });
+    for (const kind of Object.keys(preview)) packets[kind].data = preview[kind];
+  }
+  preferences = structuredClone(packets.preferences.data);
+  system = structuredClone(packets.system.data);
+  state = attach(structuredClone(packets.data.data ?? defaults("data")));
+  ensureActive();
+  // Несохранённые правки имеют отдельные ключи для каждой вкладки.
+  const candidates = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(recoveryPrefix)) candidates.push(key);
+    }
+  } catch {
+    /* серверное хранение не зависит от доступности локального кэша */
+  }
+  if (backend === "server") candidates.push(STORAGE_KEYS.data);
+  candidates.push("team-planner-v1");
+  for (const key of candidates) {
+    let raw;
+    try {
+      raw = localStorage.getItem(key);
+    } catch {
+      continue;
+    }
+    if (raw === null) continue;
+    const parsed = JSON.parse(raw);
+    const local = prepareStorageMigration({
+      data: key.startsWith(recoveryPrefix) ? parsed.data : parsed,
+    }).data;
+    if (local && !equal(local, state)) {
+      pendingLocal = local;
+      offeredKey = key;
+      break;
+    }
+    if (key.startsWith(recoveryPrefix) && !readOnly) {
+      try {
+        localStorage.removeItem(key);
+      } catch {}
+    }
+  }
+  ready = true;
+  setStatus(
+    backend,
+    readOnly
+      ? "Только чтение и экспорт: нет Web Locks / Web Crypto"
+      : backend === "server"
+        ? "Сохранено"
+        : "Хранение: в браузере",
+  );
+  if (!equal(preferences, packets.preferences.data)) save();
+  return { legacy: false, localLegacy: false };
 }
 
 /* ============ выборки по данным ============ */
@@ -313,71 +394,4 @@ export function personLoad(personId, release) {
     });
   });
   return out;
-}
-
-/* ============ миграция старых данных ============
-   До п.8 поле days считалось в календарных днях. Пересчитываем в рабочие
-   так, чтобы карточка заканчивалась там же, где и раньше: суммируем доли
-   только по рабочим дням прежнего периода. Отпуск/больничный остаются
-   календарными (weekend = true).
-
-   Затем (п.1+2) фиксируем порядок очереди: задачи каждого человека
-   сортируем по прежнему start. Без этого очередь построилась бы по
-   порядку создания задач, а он у старых данных случайный.
-
-   Миграция идемпотентна и не смотрит на номер версии: старый код
-   безусловно пишет version = 2, поэтому номер может откатиться.
-   Повторная сортировка уже пересчитанных данных даёт тот же порядок. */
-export function migrateTasks(data) {
-  (data.tasks || []).forEach((task) => {
-    task.labels = taskLabels(task);
-    if (task.daysMode === "work") return; // уже новая модель
-    const calendar = task.type === "vacation" || task.type === "sick";
-    if (calendar) {
-      task.weekend = true;
-      task.daysMode = "work";
-      return;
-    }
-    const total = Number(task.days) || 0;
-    let workdays = 0;
-    for (let i = 0; i < Math.ceil(total); i++) {
-      if (!isWeekend(addDays(task.start, i)))
-        workdays = round(workdays + Math.min(1, total - i));
-    }
-    if (workdays > 0) {
-      task.days = workdays;
-      task.weekend = false;
-    } else {
-      // задача целиком на выходных — оставляем как календарную
-      task.weekend = true;
-    }
-    task.daysMode = "work";
-  });
-
-  sortQueue(data.tasks);
-  data.version = 3;
-  return data;
-}
-
-/* Порядок задач человека — это и есть его очередь (Р4). Сортируем только
-   внутри пары «релиз + человек», не меняя общего чередования задач
-   разных людей: каждая группа получает обратно свои же позиции. */
-function sortQueue(tasks) {
-  if (!Array.isArray(tasks)) return;
-  const groups = new Map();
-  tasks.forEach((task, index) => {
-    const key = task.releaseId + "|" + task.personId;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(index);
-  });
-  groups.forEach((slots) => {
-    const list = slots
-      .map((index) => tasks[index])
-      .sort((a, b) =>
-        String(a.start || "").localeCompare(String(b.start || "")),
-      );
-    slots.forEach((index, position) => {
-      tasks[index] = list[position];
-    });
-  });
 }

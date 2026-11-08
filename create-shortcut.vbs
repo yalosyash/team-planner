@@ -11,7 +11,7 @@
 Option Explicit
 
 Dim fso, sh, dir, lnk, name, desc, target, icon, link
-Dim dataDir, settings, answer, question
+Dim nodePath, cli, status, answer, question
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set sh = CreateObject("WScript.Shell")
@@ -28,8 +28,17 @@ lnk = fso.BuildPath(sh.SpecialFolders("Desktop"), name & ".lnk")
 
 target = fso.BuildPath(dir, "start.bat")
 icon = fso.BuildPath(dir, "app\assets\planner-calendar.ico")
-dataDir = fso.BuildPath(dir, "data")
-settings = fso.BuildPath(dataDir, "launcher.json")
+If WScript.Arguments.Count <> 1 Then
+  WScript.Echo "Node path is required. Run start.bat."
+  WScript.Quit 1
+End If
+nodePath = WScript.Arguments(0)
+cli = fso.BuildPath(dir, "lib\launcher.cjs")
+status = RunCommand("status")
+If status <> "asked" And status <> "ask" Then
+  WScript.Echo "Invalid launcher status. Startup cancelled."
+  WScript.Quit 1
+End If
 
 ' Upgrade the icon on existing shortcuts without resetting their settings.
 If fso.FileExists(lnk) Then
@@ -40,11 +49,11 @@ If fso.FileExists(lnk) Then
       link.Save
     End If
   End If
-  If Not fso.FileExists(settings) Then SaveAnswer True
+  If status <> "asked" Then SaveAnswer True
   WScript.Quit 0
 End If
 
-If fso.FileExists(settings) Then WScript.Quit 0
+If status = "asked" Then WScript.Quit 0
 If Not fso.FileExists(target) Then WScript.Quit 0
 
 ' Ask once. Keep this file ASCII for Windows Script Host.
@@ -68,14 +77,30 @@ SaveAnswer True
 WScript.Quit 0
 
 Sub SaveAnswer(created)
-  Dim file, value
-  If Not fso.FolderExists(dataDir) Then fso.CreateFolder dataDir
+  Dim value, result
   value = "false"
   If created Then value = "true"
-  Set file = fso.CreateTextFile(settings, True, False)
-  file.WriteLine "{""desktopShortcutAsked"":true,""desktopShortcutCreated"":" & value & "}"
-  file.Close
+  result = RunCommand("answer " & value)
+  If result <> "ok" Then
+    WScript.Echo "Launcher answer was not saved. Startup cancelled."
+    WScript.Quit 1
+  End If
 End Sub
+
+Function RunCommand(args)
+  Dim child, output, errors
+  Set child = sh.Exec(Chr(34) & nodePath & Chr(34) & " " & Chr(34) & cli & Chr(34) & " " & args)
+  output = child.StdOut.ReadAll
+  errors = child.StdErr.ReadAll
+  Do While child.Status = 0
+    WScript.Sleep 10
+  Loop
+  If child.ExitCode <> 0 Then
+    WScript.Echo errors
+    WScript.Quit 1
+  End If
+  RunCommand = Trim(Replace(Replace(output, vbCr, ""), vbLf, ""))
+End Function
 
 ' Build a string from space-separated char codes
 Function U(codes)

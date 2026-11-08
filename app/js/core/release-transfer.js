@@ -1,3 +1,4 @@
+import { workingData } from "./storage-migration.js";
 // Формат обмена не содержит общего календаря и настроек приложения.
 import { normalizeLink } from "./util.js";
 
@@ -71,7 +72,8 @@ export function snapshot(data, release) {
 }
 
 export function exportRelease(data, releaseId) {
-  const next = copy(data);
+  const next = workingData(data);
+  if (Object.hasOwn(data, "activeId")) next.activeId = data.activeId;
   const release = next.releases.find((r) => r.id === releaseId);
   if (!release) throw new Error("Сначала выберите релиз");
   release.exchange ||= { origin: id(), people: [], parents: [] };

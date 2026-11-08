@@ -6,14 +6,15 @@
    чем браузер покажет страницу. Как module он был бы отложен и
    дал бы вспышку светлого фона.
 
-   Выбор хранится в localStorage. Значение из data.json подхватится
-   позже — в syncThemeFromState() (core/theme.js).
+   До загрузки используем preferences браузера или старый кэш темы.
+   Затем syncThemeFromState() применит тему из актуальных preferences.
    ============================================================ */
 (function () {
   var KEY = "team-planner-theme";
   var theme = null;
   try {
-    theme = localStorage.getItem(KEY);
+    var raw = localStorage.getItem("team-planner-preferences-v1");
+    theme = raw ? JSON.parse(raw).theme : localStorage.getItem(KEY);
   } catch (e) {
     /* приватный режим — остаёмся на светлой теме */
   }

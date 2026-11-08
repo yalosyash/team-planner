@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+import { prepareStorageMigration } from "../app/js/core/storage-migration.js";
 // Headless Chrome + CDP, без внешних зависимостей и без доступа к рабочим данным.
 import assert from "node:assert/strict";
 import http from "node:http";
@@ -48,7 +50,24 @@ const exported = exportRelease(source, "r");
 let backupFails = false;
 let backup = null;
 let missingVersion = false;
+const require = createRequire(import.meta.url);
+const { createFileStore } = require("../lib/file-store.cjs");
+const { createStorageApi } = require("../lib/storage-api.cjs");
+const installation = path.join(profile, "installation");
+const tempStore = await createFileStore(installation);
+await tempStore.migrate();
+await tempStore.write(
+  "data",
+  prepareStorageMigration({ data: initial }).data,
+  (await tempStore.read("data")).revision,
+);
+const storageApi = createStorageApi(installation, { store: tempStore });
 const server = http.createServer(async (req, res) => {
+  if (req.url === "/api/health") {
+    res.end(JSON.stringify({ storageVersion: 4 }));
+    return;
+  }
+  if (await storageApi(req, res)) return;
   if (req.url === "/api/backups") {
     res.end(
       JSON.stringify({
@@ -66,21 +85,19 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (req.url === "/api/restore") {
+    const restoredPacket = missingVersion
+      ? null
+      : await tempStore.write(
+          "data",
+          prepareStorageMigration({ data: source }).data,
+          (await tempStore.read("data")).revision,
+        );
     res.end(
       JSON.stringify(
         missingVersion
           ? { ok: false, error: "not found" }
-          : { ok: true, data: structuredClone(source), revision: "restored" },
+          : { ok: true, ...restoredPacket },
       ),
-    );
-    return;
-  }
-  if (req.url === "/api/data") {
-    for await (const chunk of req) {
-    } // запись тоже изолирована
-    res.setHeader("Content-Type", "application/json");
-    res.end(
-      JSON.stringify(req.method === "GET" ? { data: initial } : { ok: true }),
     );
     return;
   }
@@ -233,7 +250,7 @@ try {
       releases: [{ id: 'short', number: 'short', start: '2026-11-02', end: '2026-11-20' }],
       tasks: durations.map((days, i) => ({ id: 'short' + i,
         personId: 'short', releaseId: 'short', start: '2026-11-02',
-        type: 'task', days, daysMode: 'work', number: 'SHORT-' + i }))
+        type: 'task', days, daysMode: 'work', weekend: false, labels: [], number: 'SHORT-' + i }))
     });
     renderBoard();
     const cards = [...document.querySelectorAll('.card')];
@@ -255,12 +272,16 @@ try {
   for (let i = 0; i < shortCards.cards.length; i++) {
     const card = shortCards.cards[i];
     assert.ok(card.height > 0);
-    if (i > 0) assert.ok(shortCards.cards[i - 1].bottom <= card.top, JSON.stringify(shortCards.cards));
+    if (i > 0)
+      assert.ok(
+        shortCards.cards[i - 1].bottom <= card.top,
+        JSON.stringify(shortCards.cards),
+      );
     assert.equal(card.tiny, i < 3);
     assert.equal(card.headingHidden, i < 3);
-    if (i < 3) assert.ok(card.tip.includes('SHORT-' + i));
+    if (i < 3) assert.ok(card.tip.includes("SHORT-" + i));
   }
-  assert.equal(shortCards.opened, 'SHORT-0');
+  assert.equal(shortCards.opened, "SHORT-0");
   assert.ok(Math.abs(shortCards.cards[3].height - 19) < 0.1);
   assert.ok(Math.abs(shortCards.cards[4].height - 42) < 0.1);
   // Длинный релиз: шапка закреплена сверху, даты — слева.
@@ -404,7 +425,9 @@ try {
   );
   await evaluate('document.querySelector("#btnMore").click()');
   assert.equal(
-    await evaluate('!document.querySelector("#moreMenu").hidden && document.querySelector("#moreMenu").contains(document.querySelector("#btnUpdates")) && document.querySelector("#moreMenu").contains(document.querySelector("#btnBackups"))'),
+    await evaluate(
+      '!document.querySelector("#moreMenu").hidden && document.querySelector("#moreMenu").contains(document.querySelector("#btnUpdates")) && document.querySelector("#moreMenu").contains(document.querySelector("#btnBackups"))',
+    ),
     true,
   );
   await evaluate('document.querySelector("#btnExport").click()');
@@ -708,6 +731,43 @@ try {
     ),
     1,
   );
+  await evaluate(`window.alert = message => window.lastIoError = message;
+    window.importWholeBoard = async () => {
+      const storage = await import('/js/core/storage.js');
+      const data = JSON.parse(JSON.stringify(storage.state));
+      data.team = 'Full import'; data.theme = 'light'; data.activeId = 'foreign';
+      data.calendar = { invalid: true }; data.queueNotice = false;
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([JSON.stringify(data)], 'old-board.json'));
+      const input = document.querySelector('#fileImport'); input.files = transfer.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const storage = await import('/js/core/storage.js');
+    storage.state.team = 'Unsaved before import'; storage.state.theme = 'dark';
+    window.ioActive = storage.state.activeId;
+    window.ioCalendar = JSON.stringify(storage.state.calendar);
+  `);
+  backupFails = true;
+  await evaluate("window.importWholeBoard()");
+  await waitFor("window.lastIoError");
+  assert.equal(
+    await evaluate('(await import("/js/core/storage.js")).state.team'),
+    "Unsaved before import",
+  );
+  backupFails = false;
+  await evaluate("window.lastIoError = null; window.importWholeBoard()");
+  await waitFor(
+    '(await import("/js/core/storage.js")).state.team === "Full import"',
+  );
+  assert.ok(
+    await evaluate(`(async () => {
+    const { state } = await import('/js/core/storage.js');
+    return state.theme === 'dark' && state.activeId === window.ioActive &&
+      JSON.stringify(state.calendar) === window.ioCalendar;
+  })()`),
+  );
+  assert.equal(backup.team, "Unsaved before import");
+  assert.ok(!Object.hasOwn(backup, "theme"));
   missingVersion = true;
   await evaluate('document.querySelector("#btnBackups").click()');
   await waitFor('document.querySelector("[data-restore]")');
