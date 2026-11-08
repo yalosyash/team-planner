@@ -220,6 +220,49 @@ try {
   await waitFor(
     'document.querySelector("#storeStatus")?.textContent.includes("Сохранено")',
   );
+  // Короткие задачи остаются внутри своих интервалов, включая рамки
+  // и padding; скрытая шапка всегда доступна в подсказке и по клику.
+  const shortCards = await evaluate(`await (async () => {
+    const storage = await import('/js/core/storage.js');
+    const { renderBoard } = await import('/js/ui/board.js');
+    const previous = storage.state;
+    const durations = [0.01, 0.1, 0.25, 0.5, 1];
+    storage.replaceState({ ...previous,
+      people: [{ id: 'short', name: 'Тест', color: '#abcdef' }],
+      activeId: 'short',
+      releases: [{ id: 'short', number: 'short', start: '2026-11-02', end: '2026-11-20' }],
+      tasks: durations.map((days, i) => ({ id: 'short' + i,
+        personId: 'short', releaseId: 'short', start: '2026-11-02',
+        type: 'task', days, daysMode: 'work', number: 'SHORT-' + i }))
+    });
+    renderBoard();
+    const cards = [...document.querySelectorAll('.card')];
+    const result = cards.map(card => {
+      const rect = card.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, height: rect.height,
+        tiny: card.classList.contains('is-tiny'), tip: card.dataset.tip,
+        headingHidden: getComputedStyle(card.querySelector('.c-top')).display === 'none' };
+    });
+    cards[0].click();
+    const opened = document.querySelector('#tNum').value;
+    const { closeModal } = await import('/js/ui/modal.js');
+    closeModal('#mTask');
+    storage.replaceState(previous);
+    renderBoard();
+    return { cards: result, opened };
+  })()`);
+  assert.equal(shortCards.cards.length, 5);
+  for (let i = 0; i < shortCards.cards.length; i++) {
+    const card = shortCards.cards[i];
+    assert.ok(card.height > 0);
+    if (i > 0) assert.ok(shortCards.cards[i - 1].bottom <= card.top, JSON.stringify(shortCards.cards));
+    assert.equal(card.tiny, i < 3);
+    assert.equal(card.headingHidden, i < 3);
+    if (i < 3) assert.ok(card.tip.includes('SHORT-' + i));
+  }
+  assert.equal(shortCards.opened, 'SHORT-0');
+  assert.ok(Math.abs(shortCards.cards[3].height - 19) < 0.1);
+  assert.ok(Math.abs(shortCards.cards[4].height - 42) < 0.1);
   // Длинный релиз: шапка закреплена сверху, даты — слева.
   const scrollLayout = await evaluate(`await (async () => {
     const storage = await import('/js/core/storage.js');

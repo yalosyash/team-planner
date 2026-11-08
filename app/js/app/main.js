@@ -59,7 +59,7 @@ function ensureActiveRelease() {
   initUpdates();
   initKeepalive();
 
-  let { legacy, localLegacy } = await initStorage();
+  await initStorage();
   syncThemeFromState();
   ensureActiveRelease();
   initCalendar();
@@ -74,23 +74,11 @@ function ensureActiveRelease() {
     );
     if (useLocal) {
       replaceState(pendingLocal);
-      legacy = localLegacy;
       syncThemeFromState();
       ensureActiveRelease();
       save();
       render();
     }
     setPendingLocal(null);
-  }
-
-  // Только при запуске: импорт, демо и откат версии сюда не попадают.
-  if (legacy && state.tasks.length && state.queueNotice !== "shown") {
-    const notice = document.querySelector("#queueNotice");
-    notice.hidden = false;
-    notice.querySelector("button").addEventListener("click", () => {
-      notice.hidden = true;
-    });
-    state.queueNotice = "shown";
-    save();
   }
 })();

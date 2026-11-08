@@ -336,6 +336,29 @@
   align-items: center;
 }
 
+/* Самые короткие задачи — полоски в масштабе времени.
+   Убираем padding, чтобы он не увеличивал высоту меньше 12px. */
+.card.is-tiny {
+  padding: 0;
+}
+
+/* Контур внутри полоски сохраняет цвет обычной карточки, не задавая
+   минимальную высоту через рамку самой карточки. */
+.card.is-tiny::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid;
+  border-color: inherit;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.card.is-tiny .c-top,
+.card.is-tiny .c-txt {
+  display: none;
+}
+
 .card .c-txt[hidden] {
   display: none;
 }

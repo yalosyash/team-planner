@@ -349,9 +349,14 @@ function cardHTML(item, person, left, width, release, absent) {
   // конец последнего дня. Задача на полдня занимает половину ряда и
   // может начинаться в середине дня, сразу за предыдущей (Р9).
   const to = item.to == null ? 1 : item.to;
-  const top = (item.start + from) * ROW_H + 2;
-  const bottom = (item.end - 1 + to) * ROW_H - 2;
-  const height = Math.max(18, bottom - top);
+  const slotTop = (item.start + from) * ROW_H;
+  const slotHeight = (item.end - item.start - 1 + to - from) * ROW_H;
+  // У коротких задач уменьшаем отступы вместе с высотой: карточка
+  // всегда остаётся внутри своего времени и не перекрывает следующую.
+  const inset = Math.min(2, slotHeight / 4);
+  const top = slotTop + inset;
+  const height = slotHeight - inset * 2;
+  const tiny = height < 18;
   // Продолжаем общую линию внутри карточки на той же высоте.
   // Её слой ниже текста, а клики по-прежнему получает карточка.
   const todayTop = item.todayIndex * ROW_H - top - 1;
@@ -395,8 +400,8 @@ function cardHTML(item, person, left, width, release, absent) {
     ? `<span class="c-st" data-tip="${markTip}" aria-label="${esc(statusLabel)}">${status === "preprod" ? "✓" : "!"}</span>`
     : "";
 
-  return `<div class="card ${cls}${status ? " st-" + status : ""}${out ? " is-out" : ""}" data-task="${task.id}" data-hint="${esc(JSON.stringify(hint))}"
-    style="left:${left}px;width:${width}px;top:${top}px;height:${height}px;${style}">
+  return `<div class="card ${cls}${tiny ? " is-tiny" : ""}${status ? " st-" + status : ""}${out ? " is-out" : ""}" data-task="${task.id}" data-hint="${esc(JSON.stringify(hint))}"
+    style="left:${left}px;width:${width}px;top:${top}px;height:${height}px;${tiny ? "border-width:0;" : ""}${style}">
   ${hatches}
   ${todayLine}
   <div class="c-top"><div class="c-heading">${labelsHTML}${headHTML}</div><div class="c-right"><div class="c-dur">${taskDur(task)}</div>${mark}</div></div>
@@ -481,6 +486,11 @@ function applyHints() {
       card.getBoundingClientRect().height < 30,
     );
     const txt = card.querySelector(".c-txt");
+    if (card.classList.contains("is-tiny")) {
+      if (txt) txt.hidden = true;
+      card.dataset.tip = card.dataset.hint;
+      return;
+    }
     const clippedV = clipTitle(card, txt);
     const num = card.querySelector(".c-num");
     const clippedH =

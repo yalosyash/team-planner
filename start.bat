@@ -15,10 +15,13 @@ set "OLDPAGE=%OLDPAGE: =%"
 set "OLDPAGE=%OLDPAGE:.=%"
 chcp 65001 >nul
 
-rem Ярлык с иконкой рядом с папкой: у .bat своей иконки в Windows нет.
-rem Скрипт сам выходит, если ярлык уже есть, и ничего не ломает, если
-rem Windows запрещает .vbs - тогда просто запустится start.bat.
-start "" wscript.exe //nologo "%~dp0create-shortcut.vbs"
+rem Ярлык с иконкой на рабочем столе: у .bat своей иконки в Windows нет.
+rem Ждём завершения: при ошибке показываем причину в консоли.
+cscript.exe //nologo "%~dp0create-shortcut.vbs"
+if errorlevel 1 (
+  echo Не удалось создать ярлык на рабочем столе. Ошибка указана выше.
+  pause
+)
 
 for /f "delims=" %%N in ('where node 2^>nul') do (
   set "NODE=%%N"

@@ -179,46 +179,39 @@ button:disabled {
   opacity: 0.45;
 }
 
-/* Сообщение о переходе на очередь не перекрывает строки доски. */
-.queue-notice {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--panel2);
-  border-bottom: 1px solid var(--line);
-}
-
-.queue-notice span {
-  flex: 1;
-  min-width: 0;
-}
-
-.queue-notice button {
-  flex: none;
-}
-
-/* тост */
-.toast {
+/* Постоянные предупреждения и короткие сообщения внизу экрана. */
+.notifications {
   position: fixed;
   left: 50%;
   bottom: 22px;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(560px, calc(100% - 28px));
+  z-index: 80;
+  pointer-events: none;
+}
+
+.calendar-notice,
+.toast {
+  max-width: 100%;
   background: var(--toast-bg);
   color: var(--toast-fg);
   padding: 10px 16px;
   border-radius: 10px;
   font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transition: 0.25s;
-  z-index: 80;
+  box-shadow: 0 4px 18px #0003;
+  overflow-wrap: anywhere;
+}
+
+.toast {
+  display: none;
 }
 
 .toast.show {
-  opacity: 1;
-  bottom: 30px;
+  display: block;
 }
 
 /* сообщение для браузера без JavaScript */

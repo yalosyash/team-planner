@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Планировщик загрузки команды</title>
-    <link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32" />
-    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/favicon.ico?v=2" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256" />
+    <link rel="icon" href="assets/favicon.svg?v=2" type="image/svg+xml" />
 
     <!-- Тему нужно применить до отрисовки страницы, иначе при старте
          в тёмной теме на мгновение вспыхивает светлый фон. Поэтому это
@@ -134,21 +134,6 @@
         />
       </div>
     </header>
-
-    <aside class="queue-notice" id="queueNotice" role="status" hidden>
-      <span
-        >Задачи выстроены по порядку с начала релиза — дата в задачах больше не
-        вводится. Прежняя версия данных сохранена в «Резервных копиях».</span
-      >
-      <button type="button">Понятно</button>
-    </aside>
-
-    <aside
-      class="queue-notice"
-      id="calendarNotice"
-      role="status"
-      hidden
-    ></aside>
 
     <nav class="tabs" id="tabs"></nav>
 
@@ -409,7 +394,10 @@
         </div>
       </div>
     </div>
-    <div class="toast" id="toast"></div>
+    <div class="notifications">
+      <aside class="calendar-notice" id="calendarNotice" role="status" hidden></aside>
+      <div class="toast" id="toast" role="status"></div>
+    </div>
 
     <noscript>
       <p class="noscript">
