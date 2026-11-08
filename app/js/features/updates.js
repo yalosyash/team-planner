@@ -5,13 +5,15 @@ export function initUpdates() {
   document.querySelector("#appVersion").textContent = `Версия приложения ${APP_VERSION}`;
   const button = document.querySelector("#btnUpdates");
   let updateAvailable = false;
+  let lastCheck = -Infinity;
+  let notifiedVersion = null;
+  const interval = 60 * 60 * 1000;
+  const notice = document.querySelector("#updateNotice");
+  const menu = document.querySelector("#btnMore");
   button.title = `Текущая версия: ${APP_VERSION}`;
-  button.addEventListener("click", async () => {
+  async function checkUpdates(automatic = false) {
     if (button.disabled) return;
-    if (updateAvailable) {
-      window.open(RELEASES_URL, "_blank", "noopener,noreferrer");
-      return;
-    }
+    lastCheck = Date.now();
     button.disabled = true;
     button.textContent = "Проверка обновлений…";
     const controller = new AbortController();
@@ -23,7 +25,7 @@ export function initUpdates() {
         signal: controller.signal,
       });
       if (response.status === 404) {
-        toast("Опубликованных релизов пока нет.");
+        if (!automatic) toast("Опубликованных релизов пока нет.");
         return;
       }
       if (!response.ok) throw new Error("Ошибка GitHub");
@@ -32,19 +34,44 @@ export function initUpdates() {
         throw new Error("Некорректный релиз");
       const comparison = compareVersions(release.tag_name, APP_VERSION);
       if (comparison > 0) {
-        toast(`Доступна версия ${release.tag_name}. Нажмите «Открыть релиз» для скачивания.`);
+        if (notifiedVersion !== release.tag_name || !automatic)
+          toast(`Доступна версия ${release.tag_name}. Откройте «Меню», чтобы скачать обновление.`);
+        notifiedVersion = release.tag_name;
+        menu.title = `Меню приложения — доступна версия ${release.tag_name}`;
+        menu.setAttribute("aria-label", menu.title);
+        notice.hidden = false;
         updateAvailable = true;
       } else {
-        toast(comparison === 0
+        if (!automatic) toast(comparison === 0
           ? `Установлена последняя версия (${APP_VERSION}).`
           : `Установлена версия ${APP_VERSION}, новее опубликованного релиза.`);
       }
     } catch {
-      toast("Не удалось проверить обновления. Попробуйте ещё раз.");
+      if (!automatic) toast("Не удалось проверить обновления. Попробуйте ещё раз.");
     } finally {
       clearTimeout(timeout);
       button.disabled = false;
-      button.textContent = updateAvailable ? "Открыть релиз" : "Проверить обновления";
+      button.textContent = updateAvailable ? `Доступна версия ${notifiedVersion.replace(/^v/, "")}` : "Проверить обновления";
     }
+  }
+  button.addEventListener("click", () => {
+    if (updateAvailable) {
+      window.open(RELEASES_URL, "_blank", "noopener,noreferrer");
+      return;
+    }
+    return checkUpdates();
   });
+  function checkIfDue() {
+    if (document.visibilityState === "visible" && Date.now() - lastCheck >= interval)
+      void checkUpdates(true);
+  }
+  document.addEventListener("visibilitychange", checkIfDue);
+  window.addEventListener("focus", checkIfDue);
+  const timer = setInterval(checkIfDue, interval);
+  void checkUpdates(true);
+  return () => {
+    clearInterval(timer);
+    document.removeEventListener("visibilitychange", checkIfDue);
+    window.removeEventListener("focus", checkIfDue);
+  };
 }

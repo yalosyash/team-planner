@@ -3,6 +3,28 @@
    переключатель темы, вкладки релизов
    ============================================================ */
 
+.menu-icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.update-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.update-dot[hidden] { display: none; }
+
 /* topbar */
 .topbar {
   flex: none;
