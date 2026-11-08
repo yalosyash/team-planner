@@ -157,7 +157,9 @@ option {
 
 .more-btn .menu-line {
   transform-origin: 8px 8px;
-  transition: transform 180ms ease, opacity 180ms ease;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
 }
 
 .more-btn[aria-expanded="true"] .menu-line-top {

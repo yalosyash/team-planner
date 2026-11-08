@@ -1,5 +1,8 @@
 // Имя описывает содержимое файла; дата — местная, в формате ДД-ММ-ГГ.
-export function exportFilename(data, { purpose = "all", now = new Date() } = {}) {
+export function exportFilename(
+  data,
+  { purpose = "all", now = new Date() } = {},
+) {
   const safe = (value) =>
     String(value)
       .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")

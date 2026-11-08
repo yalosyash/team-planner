@@ -23,7 +23,9 @@
   box-shadow: 0 0 0 2px var(--card);
 }
 
-.update-dot[hidden] { display: none; }
+.update-dot[hidden] {
+  display: none;
+}
 
 /* topbar */
 .topbar {

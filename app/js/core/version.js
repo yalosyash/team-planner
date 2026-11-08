@@ -1,7 +1,9 @@
 // Перед публикацией релиза обновить номер и создать такой же тег vX.Y.Z.
 export const APP_VERSION = "1.0.0";
-export const RELEASES_URL = "https://github.com/yalosyash/team-planner/releases/latest";
-export const RELEASES_API = "https://api.github.com/repos/yalosyash/team-planner/releases/latest";
+export const RELEASES_URL =
+  "https://github.com/yalosyash/team-planner/releases/latest";
+export const RELEASES_API =
+  "https://api.github.com/repos/yalosyash/team-planner/releases/latest";
 
 export function compareVersions(left, right) {
   const parse = (value) => {

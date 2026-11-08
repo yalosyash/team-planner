@@ -48,7 +48,6 @@
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-hover);
   }
-
 }
 
 /* В режиме высокой контрастности цвета выбирает система. */
@@ -83,7 +82,11 @@ html {
   cursor: default;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="image"]),
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not(
+    [type="submit"]
+  ):not([type="reset"]):not([type="range"]):not([type="color"]):not(
+    [type="file"]
+  ):not([type="image"]),
 textarea,
 [contenteditable="true"] {
   cursor: text;
