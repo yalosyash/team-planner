@@ -82,3 +82,23 @@ shutdown: свой PID-файл удаляется при совпадении �
 Основание: `start.bat`, `create-shortcut.vbs`, `start-hidden.vbs`,
 `lib/launcher.cjs`, `lib/installation.cjs`, `server.js:findRunning/start/scheduleStop/shutdown`,
 `app/js/core/keepalive.js`.
+
+## RUN-RELEASE-001 — выпуск версии
+
+Инструкция для сопровождающего проекта; это отдельное действие от обновления
+установки пользователем. Номер приложения задаётся APP_VERSION в
+app/js/core/version.js; проверка обновлений обращается к последнему релизу GitHub.
+
+1. Обновите `APP_VERSION` в `app/js/core/version.js` (например, `1.0.1`),
+   сохраните изменения в коммите и отправьте их в `main`.
+2. На GitHub откройте Releases → Draft a new release. Создайте тег с той же
+   версией (`v1.0.1`), выбрав ветку `main`.
+3. Заполните название и описание изменений, отметьте Set as latest release
+   и нажмите Publish release. Для обычного выпуска не отмечайте pre-release.
+4. GitHub добавит архив Source code (zip).
+
+
+Перед публикацией выполните подходящие проверки из [QA-плана](../QA-PLAN.md)
+и отразите изменение поведения в [справочнике](11-maintenance.md).
+Порядок пользовательского обновления и перенос файлов —
+[ST-MOVE-001](06-storage-and-exchange.md#st-move-001--перенос-и-обновление-установки).
