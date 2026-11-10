@@ -2,6 +2,7 @@
   "name": "team-planner",
   "private": true,
   "scripts": {
+    "test:unit": "vitest run --coverage",
     "test:check": "node tests/run-checks.mjs syntax",
     "test:node": "node tests/run-checks.mjs node",
     "test:windows": "node tests/run-checks.mjs windows",
@@ -10,9 +11,11 @@
     "test:smoke": "node --preserve-symlinks --preserve-symlinks-main tests/server-isolation.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.65.0"
+    "@playwright/test": "1.65.0",
+    "@vitest/coverage-v8": "5.1.0",
+    "vitest": "5.1.0"
   }
 }

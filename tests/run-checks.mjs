@@ -52,7 +52,7 @@ async function sources(directory) {
   return files.sort();
 }
 if (group === 'syntax') {
-  const files = ['server.js', 'playwright.config.cjs',
+  const files = ['server.js', 'playwright.config.cjs', 'vitest.config.mjs',
     ...await sources('app/js'), ...await sources('lib'), ...await sources('tests')];
   for (const file of files) await run(['--check', file]);
 } else {

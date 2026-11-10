@@ -62,3 +62,4 @@ npm-debug.log*
 node_modules/
 playwright-report/
 test-results/
+coverage/

@@ -57,12 +57,13 @@
 
 ## Проверка изменений
 
-Для тестов нужен Node.js 22 или новее. Из корня проекта:
+Для тестов нужен Node.js 22.12 или новее. Из корня проекта:
 
 ```powershell
 npm ci
 npx playwright install chromium
 npm run test:check
+npm run test:unit
 npm run test:node
 npm run test:e2e
 ```
