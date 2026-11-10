@@ -9,8 +9,9 @@ const { createFileStore } = require("./lib/file-store.cjs");
 const { createStorageApi } = require("./lib/storage-api.cjs");
 const { prepareInstallation } = require("./lib/installation.cjs");
 
-const ROOT = __dirname;
-const APP = path.join(ROOT, "app"); // публичный код приложения
+function createPlannerServer(options = {}) {
+const ROOT = path.resolve(options.root || __dirname);
+const APP = path.join(__dirname, "app"); // публичный код приложения
 const DATA_DIR = path.join(ROOT, "data"); // личные данные (в git не попадают)
 const DATA = path.join(DATA_DIR, "data.json");
 const BACKUPS = path.join(DATA_DIR, "backups");
@@ -29,7 +30,7 @@ const STOP_CONFIRM = 60 * 1000; // вторая проверка перед ос
 
 // Скрытый режим: запуск из start.bat, без консольного окна.
 // В нём сервер сам останавливается, когда закрыта последняя вкладка приложения.
-const HIDDEN = process.argv.includes("--hidden");
+const HIDDEN = options.hidden ?? false;
 
 // В скрытом режиме сообщения некуда печатать — пишем их в runtime/server.log
 function initLog() {
@@ -203,7 +204,7 @@ function cancelStop() {
 // Вкладка могла закрыться аварийно (без прощального запроса) — тогда её
 // сигнал просто перестаёт приходить. Раз в 20 секунд убираем «мёртвых»
 // и проверяем, не осталось ли ни одной живой вкладки.
-setInterval(() => {
+const sweepTimer = setInterval(() => {
   const now = Date.now();
   let removed = false;
   for (const [id, t] of lives) {
@@ -217,7 +218,7 @@ setInterval(() => {
 
 // Страховка: вкладки были, но все закрылись, не успев попрощаться
 // (например, браузер упал). Тогда сервер не нужен — проверяем в фоне.
-setInterval(() => {
+const idleTimer = setInterval(() => {
   if (HIDDEN && used && lives.size === 0) scheduleStop(false);
 }, 30 * 1000).unref();
 
@@ -563,6 +564,7 @@ function findRunning(port, attempt, done) {
   req.on("error", () => findRunning(port + 1, attempt + 1, done));
 }
 
+function runCli() {
 process.on("SIGINT", () => shutdown("sigint"));
 process.on("SIGTERM", () => shutdown("sigterm"));
 
@@ -590,3 +592,43 @@ findRunning(BASE_PORT, 0, (port) => {
       process.exit(1);
     });
 });
+
+}
+
+let installation;
+async function listen(port = 0) {
+  installation = await prepareInstallation(ROOT, { store });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => {
+      server.removeListener("error", reject);
+      resolve();
+    });
+  });
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
+async function close() {
+  clearInterval(sweepTimer);
+  clearInterval(idleTimer);
+  cancelStop();
+  if (server.listening) {
+    const closed = new Promise((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()));
+    server.closeAllConnections();
+    await closed;
+  }
+  if (installation) {
+    process.removeListener("exit", installation.release);
+    installation.release();
+    installation = null;
+  }
+}
+
+return { server, listen, close, runCli };
+}
+
+module.exports = { createPlannerServer };
+if (require.main === module) {
+  createPlannerServer({ hidden: process.argv.includes("--hidden") }).runCli();
+}

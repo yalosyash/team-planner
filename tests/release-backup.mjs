@@ -3,35 +3,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import vm from "node:vm";
 import { createRequire } from "node:module";
 import { once } from "node:events";
 const directory = fs.mkdtempSync(
   path.join(os.tmpdir(), "planner-backup-test-"),
 );
-const module = { exports: {} };
-const source = fs.readFileSync(
-  new URL("../server.js", import.meta.url),
-  "utf8",
-);
-// Не запускаем поиск рабочего сервера, браузер, обработчики завершения и таймеры.
-vm.runInNewContext(
-  source.slice(0, source.indexOf('process.on("SIGINT"')) +
-    "\nmodule.exports = server;",
-  {
-    require: createRequire(new URL("../server.js", import.meta.url)),
-    __dirname: directory,
-    module,
-    process: { argv: [], pid: process.pid },
-    console,
-    URL,
-    Buffer,
-    setInterval: () => ({ unref() {} }),
-    setTimeout,
-    clearTimeout,
-  },
-);
-const server = module.exports;
+const require = createRequire(import.meta.url);
+const { createPlannerServer } = require("../server.js");
+const application = createPlannerServer({ root: directory });
+const { server } = application;
 try {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -44,7 +24,7 @@ try {
     team: "На диске",
   };
   const memory = { ...disk, team: "Ещё не сохранённая правка" };
-  fs.mkdirSync(path.join(directory, "data"));
+  fs.mkdirSync(path.join(directory, "data"), { recursive: true });
   const dataFile = path.join(directory, "data/data.json");
   fs.writeFileSync(dataFile, JSON.stringify(disk));
   const post = (body) =>
@@ -177,6 +157,6 @@ try {
   );
 } finally {
   server.closeAllConnections();
-  server.close();
+  await application.close();
   fs.rmSync(directory, { recursive: true, force: true });
 }

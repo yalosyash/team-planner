@@ -1,0 +1,84 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Syntax and Node checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:check
+      - run: npm run test:node
+      - uses: actions/upload-artifact@v5
+        if: ${{ failure() }}
+        with:
+          name: node-logs
+          path: test-results/
+          retention-days: 14
+
+  browser:
+    name: Chromium E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: chromium-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  windows:
+    name: Windows installation
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:windows
+      - uses: actions/upload-artifact@v5
+        if: ${{ failure() }}
+        with:
+          name: windows-logs
+          path: test-results/
+          retention-days: 14
+
+  qa-result:
+    name: QA result
+    if: ${{ always() }}
+    needs: [node, browser, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every mandatory job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e 'const jobs = JSON.parse(process.env.RESULTS); for (const [name, job] of Object.entries(jobs)) { console.log(`${name}: ${job.result}`); if (job.result !== "success") process.exitCode = 1; }'

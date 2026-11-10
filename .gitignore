@@ -57,3 +57,8 @@ npm-debug.log*
 # ярлык «Планировщик» создаётся при первом запуске и хранит
 # абсолютный путь этого компьютера — в git ему нельзя
 *.lnk
+
+# QA dependencies and generated reports
+node_modules/
+playwright-report/
+test-results/
