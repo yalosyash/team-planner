@@ -3,8 +3,6 @@
    ============================================================ */
 import { esc } from "../core/dom.js";
 import { PALETTE } from "../core/util.js";
-import { state, save } from "../core/storage.js";
-import { render } from "../core/render.js";
 
 let cleanup = null;
 
@@ -33,9 +31,8 @@ function placePalette(pop, button) {
   pop.style.visibility = "";
 }
 
-/* row — строка сотрудника, id — сотрудник, onApplied — обновить доску */
-export function openPalette(row, id) {
-  const person = state.people.find((x) => x.id === id);
+/* Выбор цвета изменяет только переданный черновик сотрудника. */
+export function openPalette(row, person) {
   if (!person) return;
   const button = row.querySelector("[data-c-open]");
   // повторный клик по той же кнопке — закрыть
@@ -86,10 +83,8 @@ export function openPalette(row, id) {
     const swatch = e.target.closest("[data-pal]");
     if (!swatch) return;
     person.color = swatch.dataset.pal;
-    save();
     button.innerHTML = `<span class="pdot" style="background:${esc(person.color)}"></span>`;
     closePalette();
-    render();
   });
 
   cleanup = () => {

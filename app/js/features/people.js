@@ -5,26 +5,29 @@ import { $, esc } from "../core/dom.js";
 import { PALETTE, uid } from "../core/util.js";
 import { state, save } from "../core/storage.js";
 import { render } from "../core/render.js";
-import { openModal } from "../ui/modal.js";
+import { openModal, closeModal } from "../ui/modal.js";
 import { closePalette, openPalette } from "../ui/palette.js";
-import { renderTabs } from "../ui/tabs.js";
 
 let dragPersonId = null;
+let draft = null;
 
 export function openPeople() {
+  draft = state.people.map((person) => ({ ...person }));
+  dragPersonId = null;
   renderPeople();
   openModal("#mPeople");
 }
 
 export function renderPeople() {
   closePalette();
+  if (!draft) return;
   const box = $("#plist");
-  if (!state.people.length) {
+  if (!draft.length) {
     box.innerHTML = `<div class="hint">Пока нет сотрудников.</div>`;
     return;
   }
 
-  box.innerHTML = state.people
+  box.innerHTML = draft
     .map(
       (person) => `<div class="prow" data-id="${person.id}">
   <span class="phandle" draggable="true" title="Перетащите, чтобы изменить порядок">⋮⋮</span>
@@ -44,16 +47,14 @@ export function renderPeople() {
 
 function bindRow(row, box) {
   const id = row.dataset.id;
-  const person = () => state.people.find((x) => x.id === id);
+  const person = () => draft.find((x) => x.id === id);
 
   row.querySelector("[data-n]").addEventListener("input", (e) => {
     person().name = e.target.value;
-    save();
-    renderTabs(); // шапка обновится при закрытии
   });
 
   row.querySelector("[data-c-open]").addEventListener("click", () => {
-    openPalette(row, id);
+    openPalette(row, person());
   });
 
   row.querySelector("[data-x]").addEventListener("click", () => {
@@ -62,15 +63,12 @@ function bindRow(row, box) {
     if (
       count &&
       !confirm(
-        `У ${target.name} есть ${count} задач(и). Удалить сотрудника и его задачи?`,
+        `У ${target.name} есть ${count} задач(и). Удалить сотрудника и его задачи после нажатия «Готово»?`,
       )
     )
       return;
-    state.people = state.people.filter((x) => x.id !== id);
-    state.tasks = state.tasks.filter((t) => t.personId !== id);
-    save();
+    draft = draft.filter((x) => x.id !== id);
     renderPeople();
-    render();
   });
 
   /* перетаскивание строк: ручка слева, как в списках файлов */
@@ -117,31 +115,29 @@ function isAfter(event, row) {
 
 /* переставить сотрудника: from перед/после to */
 function movePerson(fromId, toId, after) {
-  const from = state.people.findIndex((p) => p.id === fromId);
+  const from = draft.findIndex((p) => p.id === fromId);
   if (from < 0) return;
-  const moving = state.people.splice(from, 1)[0];
-  let to = state.people.findIndex((p) => p.id === toId);
+  const moving = draft.splice(from, 1)[0];
+  let to = draft.findIndex((p) => p.id === toId);
   if (to < 0) {
-    state.people.splice(from, 0, moving);
+    draft.splice(from, 0, moving);
     return;
   }
   if (after) to += 1;
-  state.people.splice(to, 0, moving);
+  draft.splice(to, 0, moving);
   dragPersonId = null;
-  save();
   renderPeople();
-  render();
 }
 
 export function initPeople() {
   $("#pAdd").addEventListener("click", () => {
-    const color = PALETTE[state.people.length % PALETTE.length];
+    if (!draft) return;
+    const color = PALETTE[draft.length % PALETTE.length];
     const person = { id: uid(), name: "Новый сотрудник", color };
-    state.people.push(person);
-    save();
+    draft.push(person);
     renderPeople();
-    render();
     setTimeout(() => {
+      if (!draft?.some((item) => item.id === person.id)) return;
       const input = document.querySelector(
         `.prow[data-id="${person.id}"] [data-n]`,
       );
@@ -152,10 +148,22 @@ export function initPeople() {
     }, 30);
   });
 
-  $("#mPeople").addEventListener("click", (e) => {
-    if (e.target.closest("[data-close]")) {
-      closePalette();
+  $("#pDone").addEventListener("click", () => {
+    if (!draft) return;
+    const people = draft;
+    const ids = new Set(people.map((person) => person.id));
+    const changed = JSON.stringify(people) !== JSON.stringify(state.people);
+    if (changed) {
+      state.people = people;
+      state.tasks = state.tasks.filter((task) => ids.has(task.personId));
+      save();
       render();
     }
+    closeModal("#mPeople");
+  });
+
+  $("#mPeople").addEventListener("modalclose", () => {
+    draft = null;
+    dragPersonId = null;
   });
 }

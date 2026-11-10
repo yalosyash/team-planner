@@ -15,59 +15,59 @@
 
 ## Пользовательские действия
 
-| ID | Действие и существенные альтернативы | Раздел / этап | Реализация | Существующая проверка |
-| --- | --- | --- | --- | --- |
-| F-01 | Открыть приложение; пустая доска без сотрудников → добавить людей или загрузить демо | 02, 04 / 2 | `ui/board.js: renderBoard`, `app/main.js` | Нет отдельной полной проверки начала работы |
-| F-02 | Указать/изменить название команды; Enter/потеря фокуса применяют, Escape отменяет | 02, 04, 05 / 2 | `ui/team.js: edit` | Нет |
-| F-03 | Открыть «Сотрудники»; добавить, изменить имя; изменения сохраняются сразу | 02, 04, 05 / 2 | `features/people.js: initPeople, bindRow` | Нет отдельной проверки всего CRUD |
-| F-04 | Выбрать цвет сотрудника; закрыть палитру, в том числе вне её и Escape | 02, 04 / 2 | `ui/palette.js: openPalette, closePalette` | Нет |
-| F-05 | Переставить сотрудника ручкой в списке; порядок столбцов | 02, 04, 05 / 2 | `features/people.js: movePerson`, `ui/board.js` | Нет |
-| F-06 | Удалить сотрудника; при связанных записях подтвердить удаление его задач и отсутствий во всех релизах; отменить | 02, 05 / 2 | `features/people.js: bindRow` | Нет |
-| F-07 | Создать релиз через плюс вкладок или пустую доску; автоматический номер и даты; ошибки номера/дат/периода; отмена | 02, 04, 05 / 2 | `features/release.js: openRelease, nextRelNumber, saveRelease`, `ui/board.js` | Нет отдельного CRUD релиза |
-| F-08 | Выбрать вкладку; изменить номер и даты релиза; перерасчёт доски | 02, 03, 04 / 2–3 | `ui/tabs.js: renderTabs`, `features/release.js`, `core/render.js` | `calendar.mjs` — расчёты, не весь UI |
-| F-09 | Удалить релиз из вкладки/диалога со всеми его записями; подтверждение/отмена; выбор оставшегося релиза | 02, 05 / 2 | `features/release.js: deleteRelease` | `release-transfer-ui.mjs` — удалённый релиз при обмене; общий CRUD — пробел |
-| F-10 | Открыть «+ Задача»; отказ без релиза или сотрудников; выбрать исполнителя | 02, 04 / 2 | `features/task.js: openTask` | Нет отдельного полного сценария |
-| F-11 | Добавить/изменить обычную задачу: номер, ссылка, описание, длительность, статус, FE/BE, работа в нерабочие дни; некорректный ввод/отмена | 02, 04, 05 / 2 | `features/task.js: saveTask, syncTaskType`, `core/util.js: normalizeLink`, `app/index.html` от корня | `task-labels.mjs`, `release-transfer-ui.mjs` — отдельные свойства |
-| F-12 | Изменить исполнителя; задача переходит в конец его очереди | 02, 03 / 2–3 | `features/task.js: saveTask`, `core/plan.js: previewPlacement` | Полный UI-сценарий — пробел |
-| F-13 | Добавить/изменить отпуск или больничный: собственная дата начала, календарная длительность; сменить тип записи | 02, 03, 04 / 2–3 | `features/task.js: syncTaskType, saveTask`, `core/plan.js` | `calendar.mjs`, `storage-migration.mjs` — отдельные случаи |
-| F-14 | Открыть карточку для правки; открыть ссылку номера в новой вкладке без диалога | 02, 04 / 2 | `ui/board.js: bindCards, cardHTML` | Полная проверка взаимодействия — пробел |
-| F-15 | Удалить задачу/отсутствие; подтвердить или отменить; перерасчёт очереди | 02, 03 / 2–3 | `features/task.js: deleteTask`, `core/render.js` | Полный UI-сценарий — пробел |
-| F-16 | Переключить светлую/тёмную тему; применить при новом открытии | 04, 06 / 2, 4 | `core/theme.js`, `init/theme-boot.js` | `split-storage-browser.mjs`, `installation.mjs` — сохранение настроек |
-| F-17 | Закрыть диалог кнопкой/крестиком/фоном/Escape; меню клавишами, кликом вне и потерей фокуса | 04 / 2 | `ui/modal.js`, `ui/palette.js`, `features/data-io.js: initIoMenus`, `ui/dropdown.js` | `release-transfer-ui.mjs` — часть меню и отмен |
-| F-18 | Загрузить демо из состояния без сотрудников; замена людей, релизов, задач | 02, 06 / 2, 4 | `ui/board.js: renderBoard`, `features/demo.js: loadDemo` | Нет; подтверждение в коде отсутствует, см. Q-04 |
-| F-19 | «Экспорт → Все данные»: скачать рабочую доску без локальных настроек | 02, 06 / 2, 4 | `features/data-io.js: exportJson`, `core/storage-migration.js: workingData`, `core/export-filename.js` | `release-transfer-ui.mjs`, `split-storage.mjs` |
-| F-20 | «Импорт → Все данные»: выбор/отмена файла, размер/JSON/схема, копия текущей памяти, замена или ошибка | 02, 06 / 2, 4 | `features/data-io.js: importJson`, `features/release-transfer.js: backupCurrentBoard` | `release-transfer-ui.mjs`, `release-backup.mjs` |
-| F-21 | «Экспорт → Только релиз»: выбрать релиз, пустой список, отменить, выгрузить; записать связь передачи | 02, 05, 06 / 2, 4 | `features/release-transfer.js: openExportChoice, exportSelected`, `core/release-transfer.js: exportRelease` | `release-transfer.mjs`, `release-transfer-ui.mjs` |
-| F-22 | «Импорт → Только релиз»: файл, предпросмотр изменений, сопоставление/новые сотрудники, отдельное скачивание текущей доски | 02, 06 / 2, 4 | `features/release-transfer.js: showPreview, applyPending`, `core/release-transfer.js` | `release-transfer.mjs`, `release-transfer-ui.mjs` |
-| F-23 | Возврат/замена связанного релиза: подтверждение, повторный/устаревший пакет, параллельные правки, изменение доски во время предпросмотра/копии, отмена | 02, 06 / 2, 4 | `features/release-transfer.js`, `core/release-transfer.js: previewRelease, applyRelease` | `release-transfer.mjs`, `release-transfer-ui.mjs` |
-| F-24 | «Меню → Резервные копии»: загрузка, пустой список, ошибка; восстановление с подтверждением и копией текущей доски; исчезнувший снимок | 02, 06 / 2, 4 | `features/data-io.js: openBackups, restoreBackup`, `server.js` | `release-backup.mjs`, `release-transfer-ui.mjs` |
-| F-25 | Браузерная копия перед последней заменой: восстановить/отменить, ошибка чтения | 06 / 4 | `features/data-io.js: openBackups`, `features/release-transfer.js: BACKUP_KEY` | `release-transfer-ui.mjs` — отдельные сценарии обмена |
-| F-26 | Выбрать найденную браузерную/recovery-копию вместо загруженной доски либо оставить файл | 02, 06 / 2, 4 | `core/storage.js: initStorage`, `app/main.js: pendingLocal` | `storage.mjs`; полный ручной сценарий — пробел |
-| F-27 | «Меню → Проверить обновления»: ожидание, нет релизов, новая/текущая версия, ошибка; переход к скачиванию | 04, 08 / 2, 4 | `features/updates.js: initUpdates`, `core/version.js` | `updates.mjs` |
+| ID   | Действие и существенные альтернативы                                                                                                                   | Раздел / этап     | Реализация                                                                                                  | Существующая проверка                                                       |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| F-01 | Открыть приложение; пустая доска без сотрудников → добавить людей или загрузить демо                                                                   | 02, 04 / 2        | `ui/board.js: renderBoard`, `app/main.js`                                                                   | Нет отдельной полной проверки начала работы                                 |
+| F-02 | Указать/изменить название команды; Enter/потеря фокуса применяют, Escape отменяет                                                                      | 02, 04, 05 / 2    | `ui/team.js: edit`                                                                                          | Нет                                                                         |
+| F-03 | Открыть «Сотрудники»; добавить, изменить имя; изменения применяются по «Готово», закрытие отменяет черновик                                            | 02, 04, 05 / 2    | `features/people.js: initPeople, bindRow`                                                                   | Нет отдельной проверки всего CRUD                                           |
+| F-04 | Выбрать цвет сотрудника; закрыть палитру, в том числе вне её и Escape                                                                                  | 02, 04 / 2        | `ui/palette.js: openPalette, closePalette`                                                                  | Нет                                                                         |
+| F-05 | Переставить сотрудника ручкой в списке; порядок столбцов                                                                                               | 02, 04, 05 / 2    | `features/people.js: movePerson`, `ui/board.js`                                                             | Нет                                                                         |
+| F-06 | Удалить сотрудника; при связанных записях подтвердить удаление его задач и отсутствий во всех релизах; отменить                                        | 02, 05 / 2        | `features/people.js: bindRow`                                                                               | Нет                                                                         |
+| F-07 | Создать релиз через плюс вкладок или пустую доску; автоматический номер и даты; ошибки номера/дат/периода; отмена                                      | 02, 04, 05 / 2    | `features/release.js: openRelease, nextRelNumber, saveRelease`, `ui/board.js`                               | Нет отдельного CRUD релиза                                                  |
+| F-08 | Выбрать вкладку; изменить номер и даты релиза; перерасчёт доски                                                                                        | 02, 03, 04 / 2–3  | `ui/tabs.js: renderTabs`, `features/release.js`, `core/render.js`                                           | `calendar.mjs` — расчёты, не весь UI                                        |
+| F-09 | Удалить релиз из вкладки/диалога со всеми его записями; подтверждение/отмена; выбор оставшегося релиза                                                 | 02, 05 / 2        | `features/release.js: deleteRelease`                                                                        | `release-transfer-ui.mjs` — удалённый релиз при обмене; общий CRUD — пробел |
+| F-10 | Открыть «+ Задача»; отказ без релиза или сотрудников; выбрать исполнителя                                                                              | 02, 04 / 2        | `features/task.js: openTask`                                                                                | Нет отдельного полного сценария                                             |
+| F-11 | Добавить/изменить обычную задачу: номер, ссылка, описание, длительность, статус, FE/BE, работа в нерабочие дни; некорректный ввод/отмена               | 02, 04, 05 / 2    | `features/task.js: saveTask, syncTaskType`, `core/util.js: normalizeLink`, `app/index.html` от корня        | `task-labels.mjs`, `release-transfer-ui.mjs` — отдельные свойства           |
+| F-12 | Изменить исполнителя; задача переходит в конец его очереди                                                                                             | 02, 03 / 2–3      | `features/task.js: saveTask`, `core/plan.js: previewPlacement`                                              | Полный UI-сценарий — пробел                                                 |
+| F-13 | Добавить/изменить отпуск или больничный: собственная дата начала, календарная длительность; сменить тип записи                                         | 02, 03, 04 / 2–3  | `features/task.js: syncTaskType, saveTask`, `core/plan.js`                                                  | `calendar.mjs`, `storage-migration.mjs` — отдельные случаи                  |
+| F-14 | Открыть карточку для правки; открыть ссылку номера в новой вкладке без диалога                                                                         | 02, 04 / 2        | `ui/board.js: bindCards, cardHTML`                                                                          | Полная проверка взаимодействия — пробел                                     |
+| F-15 | Удалить задачу/отсутствие; подтвердить или отменить; перерасчёт очереди                                                                                | 02, 03 / 2–3      | `features/task.js: deleteTask`, `core/render.js`                                                            | Полный UI-сценарий — пробел                                                 |
+| F-16 | Переключить светлую/тёмную тему; применить при новом открытии                                                                                          | 04, 06 / 2, 4     | `core/theme.js`, `init/theme-boot.js`                                                                       | `split-storage-browser.mjs`, `installation.mjs` — сохранение настроек       |
+| F-17 | Закрыть диалог кнопкой/крестиком/фоном/Escape; меню клавишами, кликом вне и потерей фокуса                                                             | 04 / 2            | `ui/modal.js`, `ui/palette.js`, `features/data-io.js: initIoMenus`, `ui/dropdown.js`                        | `release-transfer-ui.mjs` — часть меню и отмен                              |
+| F-18 | Загрузить демо из состояния без сотрудников; замена людей, релизов, задач                                                                              | 02, 06 / 2, 4     | `ui/board.js: renderBoard`, `features/demo.js: loadDemo`                                                    | Нет; подтверждение в коде отсутствует, см. Q-04                             |
+| F-19 | «Экспорт → Все данные»: скачать рабочую доску без локальных настроек                                                                                   | 02, 06 / 2, 4     | `features/data-io.js: exportJson`, `core/storage-migration.js: workingData`, `core/export-filename.js`      | `release-transfer-ui.mjs`, `split-storage.mjs`                              |
+| F-20 | «Импорт → Все данные»: выбор/отмена файла, размер/JSON/схема, копия текущей памяти, замена или ошибка                                                  | 02, 06 / 2, 4     | `features/data-io.js: importJson`, `features/release-transfer.js: backupCurrentBoard`                       | `release-transfer-ui.mjs`, `release-backup.mjs`                             |
+| F-21 | «Экспорт → Только релиз»: выбрать релиз, пустой список, отменить, выгрузить; записать связь передачи                                                   | 02, 05, 06 / 2, 4 | `features/release-transfer.js: openExportChoice, exportSelected`, `core/release-transfer.js: exportRelease` | `release-transfer.mjs`, `release-transfer-ui.mjs`                           |
+| F-22 | «Импорт → Только релиз»: файл, предпросмотр изменений, сопоставление/новые сотрудники, отдельное скачивание текущей доски                              | 02, 06 / 2, 4     | `features/release-transfer.js: showPreview, applyPending`, `core/release-transfer.js`                       | `release-transfer.mjs`, `release-transfer-ui.mjs`                           |
+| F-23 | Возврат/замена связанного релиза: подтверждение, повторный/устаревший пакет, параллельные правки, изменение доски во время предпросмотра/копии, отмена | 02, 06 / 2, 4     | `features/release-transfer.js`, `core/release-transfer.js: previewRelease, applyRelease`                    | `release-transfer.mjs`, `release-transfer-ui.mjs`                           |
+| F-24 | «Меню → Резервные копии»: загрузка, пустой список, ошибка; восстановление с подтверждением и копией текущей доски; исчезнувший снимок                  | 02, 06 / 2, 4     | `features/data-io.js: openBackups, restoreBackup`, `server.js`                                              | `release-backup.mjs`, `release-transfer-ui.mjs`                             |
+| F-25 | Браузерная копия перед последней заменой: восстановить/отменить, ошибка чтения                                                                         | 06 / 4            | `features/data-io.js: openBackups`, `features/release-transfer.js: BACKUP_KEY`                              | `release-transfer-ui.mjs` — отдельные сценарии обмена                       |
+| F-26 | Выбрать найденную браузерную/recovery-копию вместо загруженной доски либо оставить файл                                                                | 02, 06 / 2, 4     | `core/storage.js: initStorage`, `app/main.js: pendingLocal`                                                 | `storage.mjs`; полный ручной сценарий — пробел                              |
+| F-27 | «Меню → Проверить обновления»: ожидание, нет релизов, новая/текущая версия, ошибка; переход к скачиванию                                               | 04, 08 / 2, 4     | `features/updates.js: initUpdates`, `core/version.js`                                                       | `updates.mjs`                                                               |
 
 ## Вычисления и подсистемы
 
-| ID | Элемент и альтернативы | Раздел / этап | Реализация | Существующая проверка |
-| --- | --- | --- | --- | --- |
-| F-28 | Очереди независимо по человеку/релизу; порядок массива, дробные дни, перерасчёт start перед отрисовкой | 03, 05 / 2–3 | `core/plan.js: planPerson, repackAll`, `core/schedule.js: layoutFrom`, `core/render.js: render` | `calendar.mjs`, `storage-migration.mjs` |
-| F-29 | Нерабочие дни, режим weekend, отсутствие и пересечения; ограничения раскладки | 03, 09 / 3 | `core/schedule.js`, `core/plan.js`, `core/dates.js` | `calendar.mjs`, `storage-migration.mjs` |
-| F-30 | Σ в шапке, норма рабочих дней, дневная перегрузка, отсутствие отдельно от рабочей загрузки | 03, 04 / 3 | `ui/board.js: renderHeads, renderBodies`, `core/storage.js: personLoad` | Полные формулы и примеры — пробел |
-| F-31 | Частичный/полный выход задач за конец релиза: пунктир, полоска в последнем дне, показатель дней за релизом | 03, 04 / 3 | `ui/board.js: renderCards, personOutflow`, `core/plan.js: overflowDays` | `calendar.mjs` — число дней; визуальная проверка — пробел |
-| F-32 | Сегодня, нерабочие строки, штриховка, дорожки, цвет, статусы, FE/BE, компактные карточки, подсказки обрезанного текста | 04 / 3 | `ui/board.js`, `ui/tooltip.js`, `core/task-labels.js`, `app/css/` от корня | `task-labels.mjs`; визуальные эталоны — пробел |
-| F-33 | Автозагрузка календаря нужных годов, включая задачи за релизом; кэш, fallback, уведомление, повтор при online/перерисовке | 03, 06, 07 / 3–4 | `features/calendar.js`, `core/calendar.js`, `server.js: /api/calendar` | `calendar.mjs`, `calendar-auto.mjs` |
-| F-34 | Автопроверка обновлений при старте/возврате/по интервалу, синяя точка меню | 04, 08 / 4 | `features/updates.js: checkIfDue, checkUpdates` | `updates.mjs` |
-| F-35 | Начальная загрузка, выбор backend, несовместимый сервер/ошибка данных, режим чтения, сообщение file:// и noscript | 04, 06, 08 / 4 | `core/storage.js: initStorage`, `app/main.js`, `init/env-check.js`, `app/index.html` от корня | `storage.mjs`, `split-storage-browser.mjs` |
-| F-36 | Раздельные доска/preferences/system, строгая схема/связи, производные и неперечисляемые свойства state | 05, 06 / 2, 4 | `core/storage-schema.js`, `core/storage.js: attach, documents` | `split-storage.mjs`, `storage-migration.mjs` |
-| F-37 | Автосохранение с задержкой, индикаторы, ошибка записи/сети, повтор, правки во время запроса, pagehide и recovery | 06 / 4 | `core/storage.js: markDirty, persist, flush`, `core/keepalive.js` | `storage.mjs`, `split-storage.mjs` |
-| F-38 | Конкурирующие вкладки/процессы, ревизии и 409, независимые документы, patch system, Web Locks и файловые блокировки | 06, 07 / 4 | `core/split-storage.js`, `core/storage.js: writeSystem`, `lib/file-store.cjs` от корня | `split-storage.mjs`, `split-storage-browser.mjs` |
-| F-39 | Миграции старой доски/очереди/настроек: копии, приоритеты, повтор после отказа, повреждённые исходники, безопасная уборка | 05, 06, 08 / 4 | `core/storage-migration.js`, `core/task-migration.js`, `lib/file-migration.cjs`, `lib/installation.cjs` от корня | `storage-migration.mjs`, `installation.mjs` |
-| F-40 | Автоснимки, ротация 20, имена/метаданные, старые смешанные копии, резервирование перед заменой | 06 / 4 | `server.js: snapshot, prune, listBackups`, `features/release-transfer.js` | `release-backup.mjs`, `installation.mjs` |
-| F-41 | HTTP: GET/POST data/preferences/system, backup/backups/restore, calendar, health/alive/bye; ошибки методов, JSON, размера, ревизии и неизвестных путей; статическая раздача app | 07 / 4 | `server.js`, `lib/storage-api.cjs` от корня; клиентские вызовы в storage/keepalive/features | `split-storage.mjs`, `release-backup.mjs`, `installation.mjs`; полный контракт — пробел |
-| F-42 | Windows: поиск Node, подготовка/ошибка миграции, вопрос о ярлыке, сохранение отказа/удалённого ярлыка, скрытый сервер | 08 / 4 | `start.bat`, `start-hidden.vbs`, `create-shortcut.vbs`, `lib/launcher.cjs` от корня | `installation.mjs` |
-| F-43 | Порт 8787 и следующие, обнаружение экземпляра, PID/instance lock, журнал и ограничение размера, сигналы остановки | 08 / 4 | `server.js: findRunning, start, shutdown`, `lib/installation.cjs` от корня | `installation.mjs` |
-| F-44 | Жизнь вкладок: ping/bye, возврат pageshow, закрытие последней вкладки, пропавшие ping, браузер не открылся; автоостановка только hidden | 08 / 4 | `core/keepalive.js`, `server.js: scheduleStop, cancelStop, start` | `installation.mjs` — часть завершения; все таймерные ветви — пробел |
-| F-45 | Исключение личных файлов из Git и защитный pre-commit | 08 / 4 | `.gitignore`, `.githooks/pre-commit` от корня | `split-storage.mjs`; установка хука пользователем не установлена |
-| F-46 | Миграционное уведомление, массовые действия, редактор очереди | 09 / 2–5 | Активные точки входа не найдены; поле queueNotice сохраняется | Явный пробел/расхождение Q-03, Q-05; реализованными действиями не считать |
+| ID   | Элемент и альтернативы                                                                                                                                                          | Раздел / этап    | Реализация                                                                                                       | Существующая проверка                                                                   |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| F-28 | Очереди независимо по человеку/релизу; порядок массива, дробные дни, перерасчёт start перед отрисовкой                                                                          | 03, 05 / 2–3     | `core/plan.js: planPerson, repackAll`, `core/schedule.js: layoutFrom`, `core/render.js: render`                  | `calendar.mjs`, `storage-migration.mjs`                                                 |
+| F-29 | Нерабочие дни, режим weekend, отсутствие и пересечения; ограничения раскладки                                                                                                   | 03, 09 / 3       | `core/schedule.js`, `core/plan.js`, `core/dates.js`                                                              | `calendar.mjs`, `storage-migration.mjs`                                                 |
+| F-30 | Σ в шапке, норма рабочих дней, дневная перегрузка, отсутствие отдельно от рабочей загрузки                                                                                      | 03, 04 / 3       | `ui/board.js: renderHeads, renderBodies`, `core/storage.js: personLoad`                                          | Полные формулы и примеры — пробел                                                       |
+| F-31 | Частичный/полный выход задач за конец релиза: пунктир, полоска в последнем дне, показатель дней за релизом                                                                      | 03, 04 / 3       | `ui/board.js: renderCards, personOutflow`, `core/plan.js: overflowDays`                                          | `calendar.mjs` — число дней; визуальная проверка — пробел                               |
+| F-32 | Сегодня, нерабочие строки, штриховка, дорожки, цвет, статусы, FE/BE, компактные карточки, подсказки обрезанного текста                                                          | 04 / 3           | `ui/board.js`, `ui/tooltip.js`, `core/task-labels.js`, `app/css/` от корня                                       | `task-labels.mjs`; визуальные эталоны — пробел                                          |
+| F-33 | Автозагрузка календаря нужных годов, включая задачи за релизом; кэш, fallback, уведомление, повтор при online/перерисовке                                                       | 03, 06, 07 / 3–4 | `features/calendar.js`, `core/calendar.js`, `server.js: /api/calendar`                                           | `calendar.mjs`, `calendar-auto.mjs`                                                     |
+| F-34 | Автопроверка обновлений при старте/возврате/по интервалу, синяя точка меню                                                                                                      | 04, 08 / 4       | `features/updates.js: checkIfDue, checkUpdates`                                                                  | `updates.mjs`                                                                           |
+| F-35 | Начальная загрузка, выбор backend, несовместимый сервер/ошибка данных, режим чтения, сообщение file:// и noscript                                                               | 04, 06, 08 / 4   | `core/storage.js: initStorage`, `app/main.js`, `init/env-check.js`, `app/index.html` от корня                    | `storage.mjs`, `split-storage-browser.mjs`                                              |
+| F-36 | Раздельные доска/preferences/system, строгая схема/связи, производные и неперечисляемые свойства state                                                                          | 05, 06 / 2, 4    | `core/storage-schema.js`, `core/storage.js: attach, documents`                                                   | `split-storage.mjs`, `storage-migration.mjs`                                            |
+| F-37 | Автосохранение с задержкой, индикаторы, ошибка записи/сети, повтор, правки во время запроса, pagehide и recovery                                                                | 06 / 4           | `core/storage.js: markDirty, persist, flush`, `core/keepalive.js`                                                | `storage.mjs`, `split-storage.mjs`                                                      |
+| F-38 | Конкурирующие вкладки/процессы, ревизии и 409, независимые документы, patch system, Web Locks и файловые блокировки                                                             | 06, 07 / 4       | `core/split-storage.js`, `core/storage.js: writeSystem`, `lib/file-store.cjs` от корня                           | `split-storage.mjs`, `split-storage-browser.mjs`                                        |
+| F-39 | Миграции старой доски/очереди/настроек: копии, приоритеты, повтор после отказа, повреждённые исходники, безопасная уборка                                                       | 05, 06, 08 / 4   | `core/storage-migration.js`, `core/task-migration.js`, `lib/file-migration.cjs`, `lib/installation.cjs` от корня | `storage-migration.mjs`, `installation.mjs`                                             |
+| F-40 | Автоснимки, ротация 20, имена/метаданные, старые смешанные копии, резервирование перед заменой                                                                                  | 06 / 4           | `server.js: snapshot, prune, listBackups`, `features/release-transfer.js`                                        | `release-backup.mjs`, `installation.mjs`                                                |
+| F-41 | HTTP: GET/POST data/preferences/system, backup/backups/restore, calendar, health/alive/bye; ошибки методов, JSON, размера, ревизии и неизвестных путей; статическая раздача app | 07 / 4           | `server.js`, `lib/storage-api.cjs` от корня; клиентские вызовы в storage/keepalive/features                      | `split-storage.mjs`, `release-backup.mjs`, `installation.mjs`; полный контракт — пробел |
+| F-42 | Windows: поиск Node, подготовка/ошибка миграции, вопрос о ярлыке, сохранение отказа/удалённого ярлыка, скрытый сервер                                                           | 08 / 4           | `start.bat`, `start-hidden.vbs`, `create-shortcut.vbs`, `lib/launcher.cjs` от корня                              | `installation.mjs`                                                                      |
+| F-43 | Порт 8787 и следующие, обнаружение экземпляра, PID/instance lock, журнал и ограничение размера, сигналы остановки                                                               | 08 / 4           | `server.js: findRunning, start, shutdown`, `lib/installation.cjs` от корня                                       | `installation.mjs`                                                                      |
+| F-44 | Жизнь вкладок: ping/bye, возврат pageshow, закрытие последней вкладки, пропавшие ping, браузер не открылся; автоостановка только hidden                                         | 08 / 4           | `core/keepalive.js`, `server.js: scheduleStop, cancelStop, start`                                                | `installation.mjs` — часть завершения; все таймерные ветви — пробел                     |
+| F-45 | Исключение личных файлов из Git и защитный pre-commit                                                                                                                           | 08 / 4           | `.gitignore`, `.githooks/pre-commit` от корня                                                                    | `split-storage.mjs`; установка хука пользователем не установлена                        |
+| F-46 | Миграционное уведомление, массовые действия, редактор очереди                                                                                                                   | 09 / 2–5         | Активные точки входа не найдены; поле queueNotice сохраняется                                                    | Явный пробел/расхождение Q-03, Q-05; реализованными действиями не считать               |
 
 ## История первого сквозного среза
 
@@ -82,25 +82,25 @@ F-13, F-28–F-33 и F-35–F-37: создать сотрудника и рел�
 [Сценарии](02-scenarios.md), [поля UI](04-interface.md), [модель](05-data-model.md).
 Это покрытие текстом по коду, а не отметки о прохождении проверок.
 
-| Функции | Сценарий / модель | Оставшаяся работа |
-| --- | --- | --- |
-| F-01, F-10, F-35 | UC-START-001, UI-ENTRY-001 | Ручной запуск, lifecycle этапа 4 |
-| F-02 | UC-TEAM-001, DM-BOARD-001 | Проверка UI |
-| F-03–F-06 | UC-PEOPLE-001, DM-PERSON-001 | Все способы закрытия |
-| F-07–F-09 | UC-RELEASE-001, DM-RELEASE-001 | Граничные даты и расчёты |
-| F-11, F-12, F-14, F-15 | UC-TASK-001, DM-TASK-001, UI-VALID-001 | Ручной CRUD и правила этапа 3 |
-| F-13 | UC-ABSENCE-001, DM-TASK-001 | Пересечения и смена типа в UI |
-| F-16, F-17 | UI-ENTRY-001, UI-CANCEL-001, DM-LOCAL-001 | Полное описание тем/меню, визуальная проверка |
-| F-18 | UC-DEMO-001 | Проверка доски без людей, Q-04 |
-| F-19, F-20 | UC-IO-001 | Механизмы хранения этапа 4 |
-| F-21–F-23 | UC-TRANSFER-001, DM-EXCHANGE-001 | Контракт пакета/конфликтов этапа 4 |
-| F-24, F-25 | UC-RESTORE-001 | Подробный разбор восстановления этапа 4 |
-| F-26 | Инвентаризация F-26 | Подробный recovery-сценарий — этап 4 |
-| F-28–F-32 | DM-TASK-001, DM-MIGRATION-001, последствия в UC-TASK/ABSENCE/RELEASE | Формулы, примеры и оформление — этап 3 |
-| F-36, F-39 | DM-BOARD/PERSON/RELEASE/TASK/LOCAL/EXCHANGE/MIGRATION | Файловый перенос и отказы — этап 4 |
-| F-37, F-38 | UC-SAVE-001 | Подробные состояния сохранения — этап 4 |
-| F-27, F-33, F-34, F-40–F-45 | Инвентаризация этапа 1 | Подробное описание этапов 3–4 |
-| F-46 | Q-03, Q-05 | Отсутствующие команды не оформлять как доступные сценарии |
+| Функции                     | Сценарий / модель                                                    | Оставшаяся работа                                         |
+| --------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
+| F-01, F-10, F-35            | UC-START-001, UI-ENTRY-001                                           | Ручной запуск, lifecycle этапа 4                          |
+| F-02                        | UC-TEAM-001, DM-BOARD-001                                            | Проверка UI                                               |
+| F-03–F-06                   | UC-PEOPLE-001, DM-PERSON-001                                         | Все способы закрытия                                      |
+| F-07–F-09                   | UC-RELEASE-001, DM-RELEASE-001                                       | Граничные даты и расчёты                                  |
+| F-11, F-12, F-14, F-15      | UC-TASK-001, DM-TASK-001, UI-VALID-001                               | Ручной CRUD и правила этапа 3                             |
+| F-13                        | UC-ABSENCE-001, DM-TASK-001                                          | Пересечения и смена типа в UI                             |
+| F-16, F-17                  | UI-ENTRY-001, UI-CANCEL-001, DM-LOCAL-001                            | Полное описание тем/меню, визуальная проверка             |
+| F-18                        | UC-DEMO-001                                                          | Проверка доски без людей, Q-04                            |
+| F-19, F-20                  | UC-IO-001                                                            | Механизмы хранения этапа 4                                |
+| F-21–F-23                   | UC-TRANSFER-001, DM-EXCHANGE-001                                     | Контракт пакета/конфликтов этапа 4                        |
+| F-24, F-25                  | UC-RESTORE-001                                                       | Подробный разбор восстановления этапа 4                   |
+| F-26                        | Инвентаризация F-26                                                  | Подробный recovery-сценарий — этап 4                      |
+| F-28–F-32                   | DM-TASK-001, DM-MIGRATION-001, последствия в UC-TASK/ABSENCE/RELEASE | Формулы, примеры и оформление — этап 3                    |
+| F-36, F-39                  | DM-BOARD/PERSON/RELEASE/TASK/LOCAL/EXCHANGE/MIGRATION                | Файловый перенос и отказы — этап 4                        |
+| F-37, F-38                  | UC-SAVE-001                                                          | Подробные состояния сохранения — этап 4                   |
+| F-27, F-33, F-34, F-40–F-45 | Инвентаризация этапа 1                                               | Подробное описание этапов 3–4                             |
+| F-46                        | Q-03, Q-05                                                           | Отсутствующие команды не оформлять как доступные сценарии |
 
 ## Связи и результаты этапа 3
 
@@ -109,15 +109,15 @@ F-13, F-28–F-33 и F-35–F-37: создать сотрудника и рел�
 UI-SETTINGS-001 в [интерфейсе](04-interface.md). Таблицы переходов
 «экран → действие → реакция → результат» добавлены ко всем UC раздела сценариев.
 
-| Функции | Правила / примеры | Основание и предел проверки |
-| --- | --- | --- |
-| F-28 | BR-PLAN-001/002/003, EX-01/09 | planPerson, previewPlacement, repackAll выполнены на синтетических данных |
-| F-29 | BR-ABSENCE-001, BR-CALENDAR-001, EX-02–06 | Дробные/пересекающиеся отсутствия и режим выходных проверены; Q-12 открыт |
-| F-30 | BR-LOAD-001/002, EX-03/04/06/10 | personLoad выполнен, формулы шапки сверены с кодом; реальный DOM не проверен |
-| F-31 | BR-BOUNDARY-001, EX-07/10 | Числа overflowDays проверены; пунктир/условная карточка описаны по коду |
-| F-32 | UI-BOARD-001, EX-01/09 | Отсутствие влияния статуса/меток на участки проверено; оформление по коду |
-| F-33 | BR-CALENDAR-001, EX-08 | Искусственный календарь; настоящая сеть не использовалась |
-| F-08, F-11–F-15 | BR-PLAN-003, EX-09 | Изменения входных данных проверены функциями, UI-кнопки не нажимались |
+| Функции         | Правила / примеры                         | Основание и предел проверки                                                  |
+| --------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| F-28            | BR-PLAN-001/002/003, EX-01/09             | planPerson, previewPlacement, repackAll выполнены на синтетических данных    |
+| F-29            | BR-ABSENCE-001, BR-CALENDAR-001, EX-02–06 | Дробные/пересекающиеся отсутствия и режим выходных проверены; Q-12 открыт    |
+| F-30            | BR-LOAD-001/002, EX-03/04/06/10           | personLoad выполнен, формулы шапки сверены с кодом; реальный DOM не проверен |
+| F-31            | BR-BOUNDARY-001, EX-07/10                 | Числа overflowDays проверены; пунктир/условная карточка описаны по коду      |
+| F-32            | UI-BOARD-001, EX-01/09                    | Отсутствие влияния статуса/меток на участки проверено; оформление по коду    |
+| F-33            | BR-CALENDAR-001, EX-08                    | Искусственный календарь; настоящая сеть не использовалась                    |
+| F-08, F-11–F-15 | BR-PLAN-003, EX-09                        | Изменения входных данных проверены функциями, UI-кнопки не нажимались        |
 
 10.11.2026 прошли planning-examples.mjs (EX-01–EX-10 и проверка ограничения),
 существующие tests/calendar.mjs и tests/task-labels.mjs. Это не полная
@@ -129,12 +129,12 @@ UI-SETTINGS-001 в [интерфейсе](04-interface.md). Таблицы пе�
 Исторические пометки «этап 4» в таблицах выше закрыты следующими разделами;
 они не означают, что осталась ненаписанной глава хранения.
 
-| Область | Описание | Реализация / проверка |
-| --- | --- | --- |
-| F-19–F-26, полный/релизный обмен, копии и recovery | ST-START/EXCHANGE/RESTORE-001, UC-IO/TRANSFER/RESTORE | features/data-io, release-transfer, core/storage; storage.mjs, release-backup.mjs |
-| F-35–F-39, хранение, ревизии, миграция | ST-SAVE/FILES/MIGRATE-001, API-STORAGE-001 | core/storage, split-storage, lib/file-store, file-migration; split-storage.mjs, storage-migration.mjs |
-| F-40–F-45, сервер/запуск/вкладки | ARCH-001, API-OTHER/STATIC-001, RUN-START/TABS/DIAG-001 | server.js, keepalive, BAT/VBS, installation/launcher; installation.mjs и серверные тесты |
-| Демо и отсутствие транзакции | ST-EXCHANGE-001, Q-04, Q-16 | features/demo, core/storage; факт по коду, без ручного запуска |
+| Область                                            | Описание                                                | Реализация / проверка                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| F-19–F-26, полный/релизный обмен, копии и recovery | ST-START/EXCHANGE/RESTORE-001, UC-IO/TRANSFER/RESTORE   | features/data-io, release-transfer, core/storage; storage.mjs, release-backup.mjs                     |
+| F-35–F-39, хранение, ревизии, миграция             | ST-SAVE/FILES/MIGRATE-001, API-STORAGE-001              | core/storage, split-storage, lib/file-store, file-migration; split-storage.mjs, storage-migration.mjs |
+| F-40–F-45, сервер/запуск/вкладки                   | ARCH-001, API-OTHER/STATIC-001, RUN-START/TABS/DIAG-001 | server.js, keepalive, BAT/VBS, installation/launcher; installation.mjs и серверные тесты              |
+| Демо и отсутствие транзакции                       | ST-EXCHANGE-001, Q-04, Q-16                             | features/demo, core/storage; факт по коду, без ручного запуска                                        |
 
 10.11.2026, Windows, Node v22.16.0. Команды запуска:
 
@@ -164,13 +164,13 @@ API, launcher, повторный запуск, штатное завершен�
 снимки и границы достоверности. Наличие текста в справочнике не означает
 успешный результат всех ветвей сценария.
 
-| Описание | Проверка интерфейса / результата |
-| --- | --- |
-| UC-START/PEOPLE/RELEASE/TASK/ABSENCE, UI-SCREEN/VALID/CANCEL | UI-01–08, UI-11, UI-14 |
-| BR-PLAN/ABSENCE/LOAD/BOUNDARY | UI-04–08: дробная очередь, отпуск, overflow; даты подтверждены серверным GET |
-| UC-TEAM, UC-IO, ST-EXCHANGE | UI-09/10/12/13: название, файл экспорта прочитан, неверный JSON не заменил доску, полный импорт применён |
-| UC-RESTORE, ST-FILES | UI-15: список копий; применение восстановления в UI не проходилось |
-| UC-SAVE, ST-SAVE | UI-08/16: успешная перезагрузка и отказ устаревшей ревизии в двух вкладках |
+| Описание                                                     | Проверка интерфейса / результата                                                                         |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| UC-START/PEOPLE/RELEASE/TASK/ABSENCE, UI-SCREEN/VALID/CANCEL | UI-01–08, UI-11, UI-14                                                                                   |
+| BR-PLAN/ABSENCE/LOAD/BOUNDARY                                | UI-04–08: дробная очередь, отпуск, overflow; даты подтверждены серверным GET                             |
+| UC-TEAM, UC-IO, ST-EXCHANGE                                  | UI-09/10/12/13: название, файл экспорта прочитан, неверный JSON не заменил доску, полный импорт применён |
+| UC-RESTORE, ST-FILES                                         | UI-15: список копий; применение восстановления в UI не проходилось                                       |
+| UC-SAVE, ST-SAVE                                             | UI-08/16: успешная перезагрузка и отказ устаревшей ревизии в двух вкладках                               |
 
 `calendar-auto.mjs` прошёл. `release-transfer-ui.mjs` (включая отдельный повтор)
 и `split-storage-browser.mjs` завершились `CDP timeout: Runtime.enable` до
@@ -186,3 +186,14 @@ API, launcher, повторный запуск, штатное завершен�
 Основной раздел каждого вида сведений и порядок обновления определены в
 [правилах сопровождения](11-maintenance.md). Локальные ссылки, якоря и
 уникальность F-идентификаторов проверены отдельно при завершении этапа 6.
+
+## Изменение окна сотрудников — 10.11.2026
+
+F-03–F-06, UC-PEOPLE-001, UI-CANCEL-001, DM-PERSON-001 обновлены:
+имя, цвет, порядок, добавление и удаление применяются только по «Готово».
+Закрытие отменяет черновик; связанные записи удаляются при применении.
+Основание — рабочее дерево поверх 09dcf94, features/people.js и ui/modal/palette.js.
+Тест tests/people-draft.mjs выполняет настоящие обработчики на синтетическом
+DOM и подменённом хранилище: все три способа отмены, цвет, порядок, добавление,
+подтверждение и удаление записей двух релизов. Визуальная проверка браузера
+и перезагрузка в этот тест не входят. Протокол этапа 5 относится к прежней ревизии.

@@ -9,7 +9,9 @@ export function openModal(selector) {
 }
 
 export function closeModal(selector) {
-  $(selector).classList.remove("open");
+  const modal = $(selector);
+  modal.classList.remove("open");
+  modal.dispatchEvent(new Event("modalclose"));
   // если внутри был открыт поповер (палитра) — закрываем вместе с окном
   closePalette();
 }
