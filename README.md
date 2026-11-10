@@ -1,5 +1,7 @@
 # Планировщик загрузки команды
 
+[![Tests](https://github.com/yalosyash/team-planner/actions/workflows/tests.yml/badge.svg?branch=main&event=push)](https://github.com/yalosyash/team-planner/actions/workflows/tests.yml?query=branch%3Amain)
+
 Доска задач отдела: **столбцы — сотрудники, строки — дни релиза**.
 Помогает распределить работу, учесть отпуска и больничные и увидеть перегрузку.
 
@@ -52,3 +54,28 @@
 
 Подробные действия, правила расчёта и ответы на вопросы — в
 [справочнике Team Planner](docs/product/README.md).
+
+## Проверка изменений
+
+Для тестов нужен Node.js 22 или новее. Из корня проекта:
+
+```powershell
+npm ci
+npx playwright install chromium
+npm run test:check
+npm run test:node
+npm run test:e2e
+```
+
+На Windows дополнительно выполните `npm run test:windows` — проверку запуска
+и установки через WSH. Тесты используют временные синтетические данные.
+Подробнее об изоляции и составе наборов — в [tests/README.md](tests/README.md).
+
+При ошибке браузерного теста `npm run test:e2e:report` открывает HTML-отчёт
+со screenshot и trace. В [GitHub Actions](https://github.com/yalosyash/team-planner/actions/workflows/tests.yml)
+откройте запуск и упавшее задание: причина видна в логах, отчёт и артефакты
+доступны в разделе **Artifacts** запуска и хранятся 14 дней.
+Итоговая проверка **QA result** требует успеха всех обязательных заданий.
+Бейдж сверху показывает результат push в `main`; остальные ветки имеют
+собственные результаты в Actions. Ручные проверки и отложенный расширенный
+набор бейдж не подтверждает.
