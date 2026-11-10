@@ -1,4 +1,4 @@
-// Перед публикацией релиза обновить номер и создать такой же тег vX.Y.Z.
+// Версия исходников. При упаковке релиза версия в архиве берётся из его тега.
 export const APP_VERSION = "1.0.0";
 export const RELEASES_URL =
   "https://github.com/yalosyash/team-planner/releases/latest";

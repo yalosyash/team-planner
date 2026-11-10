@@ -66,7 +66,7 @@
 | Обновления           | `app/js/features/updates.js`, `app/js/core/version.js`                                                                                                    | Автопроверка, ручной запрос, сравнение версий и ссылка                                    |
 | Жизнь процесса       | `start.bat`, `start-hidden.vbs`, `create-shortcut.vbs`, `lib/launcher.cjs`, `lib/installation.cjs`, `server.js`, `app/js/core/keepalive.js`               | Node, ярлык, подготовка установки, повторный запуск, порт, PID, журнал и завершение       |
 | Конфигурация         | `app/js/package.json`, `.gitignore`, `.githooks/pre-commit`                                                                                               | Режим ES-модулей и защита локальных файлов; наличие хука не доказывает его установку      |
-| Документы            | README, TODO, QA-план; исторические GUIDE, STORAGE-FORMATS и план подготовки (в Git на ревизии 4ca7347)                                   | Сопоставление обещаний, контрактов и планов с кодом                                       |
+| Документы            | README, TODO, QA-план; исторические GUIDE, STORAGE-FORMATS и план подготовки (в Git на ревизии 4ca7347)                                                   | Сопоставление обещаний, контрактов и планов с кодом                                       |
 
 ## Существующие проверки
 

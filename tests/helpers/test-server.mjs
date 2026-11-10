@@ -18,8 +18,11 @@ export async function startTestServer() {
     fixture.origin = await application.listen();
   }
   async function dispose() {
-    try { await stop(); }
-    finally { await fs.rm(root, { recursive: true, force: true }); }
+    try {
+      await stop();
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   }
   const fixture = { root, origin: null, restart, stop, dispose };
   try {

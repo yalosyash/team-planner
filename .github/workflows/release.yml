@@ -1,0 +1,35 @@
+name: Package release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Windows user archive
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - name: Build archive using release tag as application version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: ./scripts/package-release.ps1 -Tag $env:RELEASE_TAG
+      - name: Attach archive to release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $version = $env:RELEASE_TAG -creplace '^v', ''
+          $archive = Get-Item -LiteralPath "dist/TeamPlanner-v$version.zip"
+          gh release upload $env:RELEASE_TAG $archive.FullName --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Release upload failed" }
