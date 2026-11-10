@@ -15,6 +15,7 @@ import {
   setStatus,
   readOnly,
   backend,
+  recoveryIssues,
 } from "../core/storage.js";
 import { onRender, render } from "../core/render.js";
 import { initTheme, syncThemeFromState } from "../core/theme.js";
@@ -81,6 +82,15 @@ function ensureActiveRelease() {
   ensureActiveRelease();
   if (!readOnly) initCalendar();
   render();
+  if (recoveryIssues.length) {
+    const warning = document.createElement("p");
+    warning.className = "hint";
+    warning.setAttribute("role", "status");
+    warning.textContent =
+      "Некоторые локальные копии восстановления повреждены. " +
+      "Они сохранены в браузере; основная доска загружена.";
+    document.body.append(warning);
+  }
   if (readOnly) {
     document
       .querySelectorAll("button, input, select, textarea")

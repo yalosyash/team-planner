@@ -1,7 +1,5 @@
 import { bindCalendar } from "./calendar.js";
-import { round } from "./util.js";
-import { planPerson } from "./plan.js";
-import { isAbsence } from "./schedule.js";
+import { loadByDay, planPerson } from "./plan.js";
 import { createBrowserStore, createHttpStore } from "./split-storage.js";
 import {
   defaults,
@@ -40,6 +38,7 @@ bindCalendar(() => system.calendar);
 export let backend = null;
 export let readOnly = false;
 export let pendingLocal = null;
+export const recoveryIssues = [];
 let store,
   ready = false,
   timer = null,
@@ -233,7 +232,8 @@ export const persistServer = persist;
 function flush() {
   if (!hasUnsaved() || !ready || readOnly) return;
   cacheBoard();
-  // Уже отправленные keepalive-запросы не дублируем со старой ревизией.
+  // Текущую запись не дублируем со старой ревизией. Recovery-копия
+  // остаётся, даже если браузер прервёт запрос при закрытии вкладки.
   if (saving) return;
   if (backend === "server") {
     const next = documents();
@@ -255,10 +255,13 @@ function flush() {
             }
           : { data: next[kind], baseRevision: packets[kind].revision };
       try {
-        navigator.sendBeacon(
+        const queued = navigator.sendBeacon(
           "/api/" + kind,
           new Blob([JSON.stringify(body)], { type: "application/json" }),
         );
+        // Принятый beacon тоже не подтверждает запись сервером.
+        // При отказе (например, из-за размера) восстановление идёт из кэша.
+        if (!queued) return;
       } catch {}
     }
   } else void persist();
@@ -269,6 +272,7 @@ export async function initStorage() {
   ready = false;
   readOnly = false;
   pendingLocal = null;
+  recoveryIssues.length = 0;
   offeredKey = null;
   blocked.clear();
   setStatus("", "Загрузка данных…");
@@ -337,10 +341,19 @@ export async function initStorage() {
       continue;
     }
     if (raw === null) continue;
-    const parsed = JSON.parse(raw);
-    const local = prepareStorageMigration({
-      data: key.startsWith(recoveryPrefix) ? parsed.data : parsed,
-    }).data;
+    let local;
+    try {
+      const parsed = JSON.parse(raw);
+      local = prepareStorageMigration({
+        data: key.startsWith(recoveryPrefix) ? parsed.data : parsed,
+      }).data;
+    } catch (error) {
+      // Исходный ключ не меняем: повреждённая копия может понадобиться
+      // для ручного восстановления. Остальные кандидаты независимы.
+      recoveryIssues.push({ key, message: error.message });
+      console.warn("Не удалось прочитать локальную копию:", key, error.message);
+      continue;
+    }
     if (local && !equal(local, state)) {
       pendingLocal = local;
       offeredKey = key;
@@ -385,13 +398,5 @@ export function tasksOf(personId, releaseId) {
    а не работа. Иначе задача, «повисшая» через отпуск, давала бы
    двойную загрузку и красную подсветку перегруза на ровном месте. */
 export function personLoad(personId, release) {
-  const out = [];
-  planPerson(personId, release, state.tasks).cards.forEach(({ task, segs }) => {
-    if (isAbsence(task)) return;
-    segs.forEach((seg) => {
-      if (seg.i < 0) return;
-      out[seg.i] = round((out[seg.i] || 0) + seg.amount);
-    });
-  });
-  return out;
+  return loadByDay(planPerson(personId, release, state.tasks));
 }

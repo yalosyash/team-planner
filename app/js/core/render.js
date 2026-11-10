@@ -6,7 +6,7 @@
    этот реестр. Так нет циклических импортов.
    ============================================================ */
 import { repackAll } from "./plan.js";
-import { save, state } from "./storage.js";
+import { save, state, setStatus } from "./storage.js";
 
 const renderers = [];
 
@@ -20,6 +20,14 @@ export function render() {
   // Очередь пересчитывается перед любой отрисовкой: удаление задачи,
   // правка дней или дат релиза «прижимают» карточки сами, без вызова
   // из каждого обработчика. Если даты изменились — сохраняем.
-  if (repackAll(state.releases, state.tasks)) save();
+  try {
+    if (repackAll(state.releases, state.tasks)) save();
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    // Обновление производственного календаря тоже меняет раскладку.
+    // Сохраняем последнюю отрисовку и доступ к редактору для исправления.
+    setStatus("error", error.message);
+    return;
+  }
   renderers.forEach((fn) => fn());
 }

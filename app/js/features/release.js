@@ -7,6 +7,7 @@ import { state, save } from "../core/storage.js";
 import { uid } from "../core/util.js";
 import { render } from "../core/render.js";
 import { closeModal, openModal } from "../ui/modal.js";
+import { validateDocument, validateRelease } from "../core/storage-schema.js";
 
 let editingId = null;
 
@@ -71,6 +72,25 @@ function saveRelease() {
     return;
   }
 
+  const candidate = { id: editingId || uid(), number, start, end };
+  try {
+    validateRelease(candidate);
+  } catch {
+    err.textContent = "Укажите корректные даты в диапазоне 1900–2100 годов";
+    return;
+  }
+  const releases = editingId
+    ? state.releases.map((release) =>
+        release.id === editingId ? { ...release, ...candidate } : release,
+      )
+    : state.releases.concat(candidate);
+  try {
+    validateDocument("data", { ...state, releases });
+  } catch (error) {
+    err.textContent = error.message;
+    return;
+  }
+
   if (editingId) {
     const release = state.releases.find((r) => r.id === editingId);
     release.number = number;
@@ -78,7 +98,7 @@ function saveRelease() {
     release.end = end;
     toast("Релиз обновлён");
   } else {
-    const release = { id: uid(), number, start, end };
+    const release = candidate;
     state.releases.push(release);
     state.activeId = release.id;
     toast("Релиз создан");

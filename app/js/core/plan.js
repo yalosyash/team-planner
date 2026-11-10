@@ -13,6 +13,7 @@
 import { addDays, diffDays } from "./dates.js";
 import { round } from "./util.js";
 import { isAbsence, layoutFrom } from "./schedule.js";
+import { assertDuration } from "./planning-contract.js";
 
 const EPS = 1e-9;
 
@@ -20,10 +21,10 @@ const EPS = 1e-9;
 function absenceDates(absences, release) {
   const absent = new Set();
   absences.forEach((task) => {
+    assertDuration(task.days);
     let left = round(task.days || 0);
     let day = task.start || release.start;
-    let guard = 0;
-    while (left > EPS && guard++ < 2000) {
+    while (left > EPS) {
       if (diffDays(release.start, day) >= 0) absent.add(day);
       left = round(left - Math.min(1, left));
       day = addDays(day, 1);
@@ -41,6 +42,11 @@ export function planPerson(personId, release, tasks) {
   const own = tasks.filter(
     (task) => task.personId === personId && task.releaseId === release.id,
   );
+  return planTasks(release, own);
+}
+
+/* own — задачи одного человека и релиза, уже в порядке очереди. */
+function planTasks(release, own) {
   const absences = own.filter(isAbsence);
   const absent = absenceDates(absences, release);
 
@@ -63,41 +69,71 @@ export function planPerson(personId, release, tasks) {
   // начинается в тот же день.
   let cursor = release.start;
   let used = 0;
-  own
-    .filter((task) => !isAbsence(task))
-    .forEach((task) => {
-      const step = layoutFrom(task, cursor, used, release.start, absent);
-      const start = step.segs.length
-        ? addDays(release.start, step.segs[0].i)
-        : cursor;
-      cards.push({ task, start, segs: step.segs });
-      cursor = step.day;
-      used = step.used;
-    });
+  const queue = [];
+  for (const task of own) {
+    if (isAbsence(task)) continue;
+    const step = layoutFrom(task, cursor, used, release.start, absent);
+    const start = step.segs.length
+      ? addDays(release.start, step.segs[0].i)
+      : cursor;
+    const card = { task, start, segs: step.segs };
+    cards.push(card);
+    queue.push(card);
+    cursor = step.day;
+    used = step.used;
+  }
 
-  return { cards, absent, queue: cards.filter((c) => !isAbsence(c.task)) };
+  return { cards, absent, queue };
 }
 
 /* Пересчитать очередь по всем людям и всем релизам и записать даты
    в task.start. Возвращает true, если что-то изменилось: тогда
    вызывающий код сохраняет данные. */
 export function repackAll(releases, tasks) {
-  let changed = false;
-  releases.forEach((release) => {
-    const personIds = new Set();
-    tasks.forEach((task) => {
-      if (task.releaseId === release.id) personIds.add(task.personId);
-    });
-    personIds.forEach((personId) => {
-      planPerson(personId, release, tasks).queue.forEach(({ task, start }) => {
+  const tasksByRelease = new Map();
+  for (const task of tasks) {
+    let people = tasksByRelease.get(task.releaseId);
+    if (!people) {
+      people = new Map();
+      tasksByRelease.set(task.releaseId, people);
+    }
+    let own = people.get(task.personId);
+    if (!own) {
+      own = [];
+      people.set(task.personId, own);
+    }
+    own.push(task);
+  }
+
+  const changes = [];
+  for (const release of releases) {
+    const people = tasksByRelease.get(release.id);
+    if (!people) continue;
+    for (const own of people.values()) {
+      for (const { task, start } of planTasks(release, own).queue) {
         if (task.start !== start) {
-          task.start = start;
-          changed = true;
+          changes.push({ task, start });
         }
-      });
-    });
-  });
-  return changed;
+      }
+    }
+  }
+  // Расчёт всей доски может завершиться ошибкой горизонта. Применяем
+  // даты только после успеха всех очередей, без частичного изменения.
+  for (const { task, start } of changes) task.start = start;
+  return changes.length > 0;
+}
+
+/* Загрузка из готовой раскладки, без повторного расчёта очереди.
+   Дни за концом релиза сохраняются для потребителей полной загрузки. */
+export function loadByDay({ queue }) {
+  const load = [];
+  for (const { segs } of queue) {
+    for (const { i, amount } of segs) {
+      if (i < 0) continue;
+      load[i] = round((load[i] || 0) + amount);
+    }
+  }
+  return load;
 }
 
 /* сколько дней задачи вылезает за конец релиза */

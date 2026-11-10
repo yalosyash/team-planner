@@ -269,8 +269,8 @@
 }
 
 .card.task {
-  background: var(--card-task-bg);
-  border-color: var(--card-task-bd);
+  background-color: var(--person-fill, var(--card-task-bg));
+  border-color: var(--person-border, var(--card-task-bd));
 }
 
 .card.vac {
@@ -458,11 +458,7 @@ a.c-num:focus-visible {
   color: var(--danger);
 }
 
-/* --- статусы задачи (п.4) ---
-   Заливка карточки — это цвет сотрудника, заданный инлайном. Чтобы статус
-   не стёр его, второй слой кладём градиентом (background-image), а не
-   background. Число слоёв из одного цвета даёт ровную тонировку поверх
-   заливки, при этом цвет сотрудника остаётся виден. */
+/* Статус тонирует цвет сотрудника отдельным слоем и задаёт свою рамку. */
 .card.st-waiting {
   background-image: linear-gradient(var(--st-wait-tint), var(--st-wait-tint));
   border-color: var(--st-wait-line);

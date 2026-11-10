@@ -180,16 +180,16 @@ export function loadDemo() {
       start: calendar ? addWorkdays(start, item.offset || 0) : start,
       days: item.days,
       type: item.type || "task",
-      number: item.number || undefined,
+      number: item.number || "",
       title: item.title || "",
-      // статус есть только у обычных задач: у отпуска/больничного не пишем
-      status: calendar ? undefined : item.status || undefined,
-      // ссылка — только у обычной задачи; пустая строка → поля нет
-      link: calendar ? undefined : normalizeLink(item.link) || undefined,
+      // У отсутствий нет статуса и ссылки.
+      status: calendar ? "" : item.status || "",
+      link: calendar ? "" : normalizeLink(item.link) || "",
       // демо-данные уже в новой модели: дни рабочих задач — рабочие,
       // отпуск и больничный — календарные
       weekend: calendar,
       daysMode: "work",
+      labels: [],
     };
   });
 

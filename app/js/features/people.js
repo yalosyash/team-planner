@@ -29,7 +29,7 @@ export function renderPeople() {
 
   box.innerHTML = draft
     .map(
-      (person) => `<div class="prow" data-id="${person.id}">
+      (person) => `<div class="prow" data-id="${esc(person.id)}">
   <span class="phandle" draggable="true" title="Перетащите, чтобы изменить порядок">⋮⋮</span>
   <input type="text" value="${esc(person.name)}" data-n placeholder="Имя">
   <button class="pcolor" data-c-open title="Цвет столбца">
@@ -138,9 +138,10 @@ export function initPeople() {
     renderPeople();
     setTimeout(() => {
       if (!draft?.some((item) => item.id === person.id)) return;
-      const input = document.querySelector(
-        `.prow[data-id="${person.id}"] [data-n]`,
+      const row = [...$("#plist").querySelectorAll(".prow")].find(
+        (row) => row.dataset.id === person.id,
       );
+      const input = row?.querySelector("[data-n]");
       if (input) {
         input.focus();
         input.select();

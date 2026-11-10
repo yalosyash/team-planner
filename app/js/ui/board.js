@@ -25,8 +25,8 @@ import {
   round,
 } from "../core/util.js";
 import { isAbsence, taskDur } from "../core/schedule.js";
-import { overflowDays, planPerson } from "../core/plan.js";
-import { activeRelease, personLoad, state, tasksOf } from "../core/storage.js";
+import { loadByDay, overflowDays, planPerson } from "../core/plan.js";
+import { activeRelease, state } from "../core/storage.js";
 import { cardFill } from "../core/theme.js";
 import { openPeople } from "../features/people.js";
 import { openRelease } from "../features/release.js";
@@ -63,9 +63,19 @@ export function renderBoard() {
   const days = eachDay(release.start, release.end);
   const today = todayISO();
 
+  // Снимок живёт одну отрисовку: правки задач и календаря не оставляют
+  // устаревшего кэша. Шапка, загрузка и карточки используют одну раскладку.
+  const releaseTasks = state.tasks.filter((task) => task.releaseId === release.id);
+  const plans = new Map(
+    state.people.map((person) => [
+      person.id,
+      planPerson(person.id, release, releaseTasks),
+    ]),
+  );
+
   board.innerHTML = `<div class="grid">
   <div class="left">${renderDates(days, today)}</div>
-  <div class="cols">${renderHeads(release)}${renderBodies(release, days, today)}</div>
+  <div class="cols">${renderHeads(release, plans)}${renderBodies(release, days, today, plans)}</div>
 </div>`;
 
   bindCards();
@@ -86,11 +96,12 @@ function renderDates(days, today) {
 }
 
 /* шапка с людьми: имя и суммарная загрузка */
-function renderHeads(release) {
+function renderHeads(release, plans) {
   const norm = workdaysBetween(release.start, release.end);
   const heads = state.people
     .map((person) => {
-      const all = tasksOf(person.id, release.id);
+      const plan = plans.get(person.id);
+      const all = plan.cards.map(({ task }) => task);
       const total = all.reduce((sum, task) => sum + task.days, 0);
       // с нормой сравниваем только задачи: отпуск/больничный — это не перегруз
       const taskDays = round(
@@ -99,7 +110,7 @@ function renderHeads(release) {
           .reduce((sum, task) => sum + task.days, 0),
       );
       const restDays = round(total - taskDays);
-      const out = personOutflow(person, release);
+      const out = personOutflow(plan, release);
       const over = taskDays > norm + 1e-9;
       const hint = over
         ? `Задач больше, чем рабочих дней в релизе: ${taskDays} из ${norm}` +
@@ -123,19 +134,19 @@ function renderHeads(release) {
 }
 
 /* сколько дней задач человека не влезает в конец релиза */
-function personOutflow(person, release) {
-  const { queue } = planPerson(person.id, release, state.tasks);
+function personOutflow({ queue }, release) {
   return round(
     queue.reduce((sum, card) => sum + overflowDays(card.segs, release), 0),
   );
 }
 
 /* тела столбцов: выходные, линия «сегодня», перегруз, карточки */
-function renderBodies(release, days, today) {
+function renderBodies(release, days, today, plans) {
   const bodies = state.people
     .map((person) => {
       let inner = "";
-      const load = personLoad(person.id, release);
+      const plan = plans.get(person.id);
+      const load = loadByDay(plan);
 
       days.forEach((day, index) => {
         if (!isWorkday(day))
@@ -154,7 +165,7 @@ function renderBodies(release, days, today) {
         }
       });
 
-      inner += renderCards(person, release, days.length, todayIndex);
+      inner += renderCards(person, release, days.length, todayIndex, plan);
 
       return `<div class="person-col">${inner}</div>`;
     })
@@ -167,8 +178,7 @@ function renderBodies(release, days, today) {
    посчитаны очередью. Полдня — это полдня: если в одном дне стыкуются
    две задачи, они делят день пополам (верхняя половина — первой задаче,
    нижняя — второй), а не сужают весь блок. */
-function renderCards(person, release, dayCount, todayIndex) {
-  const { cards, absent } = planPerson(person.id, release, state.tasks);
+function renderCards(person, release, dayCount, todayIndex, { cards, absent }) {
   const items = cards
     .map((card) => {
       const segs = card.segs.filter((seg) => seg.i >= 0 && seg.i < dayCount);
@@ -281,14 +291,11 @@ function cardHTML(item, person, left, width, release, absent) {
   const from = item.from || 0;
   const cls =
     task.type === "vacation" ? "vac" : task.type === "sick" ? "sick" : "task";
-  // Статус (п.4) — только у обычной задачи: у отпуска и больничного его
-  // нет и в данных. Класс вешает подсветку, иконка встаёт в верхнюю строку
-  // за «дн», а заливку накладываем отдельным градиентом (см. .card.st-*
-  // в board.css) — инлайновый цвет сотрудника при этом сохраняется.
+  // CSS совмещает цвет сотрудника с заливкой и рамкой статуса.
   const status = cls === "task" ? taskStatus(task) : "";
   const style =
     cls === "task"
-      ? `background:${cardFill(person.color)};border-color:${person.color};`
+      ? `--person-fill:${cardFill(person.color)};--person-border:${person.color};`
       : "";
   const head =
     task.type === "vacation"
@@ -400,7 +407,7 @@ function cardHTML(item, person, left, width, release, absent) {
     ? `<span class="c-st" data-tip="${markTip}" aria-label="${esc(statusLabel)}">${status === "preprod" ? "✓" : "!"}</span>`
     : "";
 
-  return `<div class="card ${cls}${tiny ? " is-tiny" : ""}${status ? " st-" + status : ""}${out ? " is-out" : ""}" data-task="${task.id}" data-hint="${esc(JSON.stringify(hint))}"
+  return `<div class="card ${cls}${tiny ? " is-tiny" : ""}${status ? " st-" + status : ""}${out ? " is-out" : ""}" data-task="${esc(task.id)}" data-hint="${esc(JSON.stringify(hint))}"
     style="left:${left}px;width:${width}px;top:${top}px;height:${height}px;${tiny ? "border-width:0;" : ""}${style}">
   ${hatches}
   ${todayLine}

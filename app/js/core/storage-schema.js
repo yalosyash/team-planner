@@ -1,6 +1,8 @@
 // Общий контракт для файлового и браузерного хранилища. Без побочных эффектов.
 import { validYear } from "./calendar.js";
 import { normalizeLink } from "./util.js";
+import { assertDuration } from "./planning-contract.js";
+import { repackAll } from "./plan.js";
 
 export class StorageError extends Error {
   constructor(message, code = "INVALID_DOCUMENT", status = 400) {
@@ -78,7 +80,7 @@ function keys(items, where) {
   check(Array.isArray(items) && items.every(key), where);
   check(new Set(items).size === items.length, where + ": повтор значения");
 }
-function release(v, withId = true) {
+export function validateRelease(v, withId = true) {
   const required = ["number", "start", "end", ...(withId ? ["id"] : [])];
   fields(
     v,
@@ -143,6 +145,11 @@ function task(v, snapshot = false) {
     date(v.start) && Number.isFinite(v.days) && v.days > 0,
     "task.start/days",
   );
+  try {
+    assertDuration(v.days);
+  } catch (error) {
+    throw new StorageError(error.message);
+  }
   check(
     ["task", "vacation", "sick"].includes(v.type) && v.daysMode === "work",
     "task.type/daysMode",
@@ -168,7 +175,7 @@ function task(v, snapshot = false) {
 }
 function snapshot(v) {
   fields(v, ["release", "tasks"], ["release", "tasks"], "snapshot");
-  release(v.release, false);
+  validateRelease(v.release, false);
   unique(v.tasks, "snapshot.tasks");
   v.tasks.forEach((v) => task(v, true));
 }
@@ -236,7 +243,7 @@ export function validateDocument(kind, v) {
       );
     }
     unique(v.releases, "releases");
-    v.releases.forEach((v) => release(v));
+    v.releases.forEach((v) => validateRelease(v));
     unique(v.tasks, "tasks");
     const people = new Set(v.people.map((p) => p.id));
     const releases = new Set(v.releases.map((r) => r.id));
@@ -247,6 +254,20 @@ export function validateDocument(kind, v) {
         "task: отсутствующая связь",
       );
     });
+    // Проверяем именно очередь: допустимая длительность сама по себе
+    // не гарантирует размещение с учётом выходных и отсутствий.
+    // Копии нужны, чтобы валидация не меняла даты исходного документа.
+    const planned = v.tasks.map((task) => ({ ...task }));
+    try {
+      repackAll(v.releases, planned);
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      throw new StorageError(error.message);
+    }
+    check(
+      planned.every((task) => date(task.start)),
+      "task: дата вне диапазона 1900–2100",
+    );
   } else if (kind === "preferences") {
     fields(
       v,

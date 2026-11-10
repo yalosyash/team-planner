@@ -4,7 +4,7 @@
 import { $, esc, toast } from "../core/dom.js";
 import { activeRelease, state, save } from "../core/storage.js";
 import { normalizeLink, uid } from "../core/util.js";
-import { previewPlacement } from "../core/plan.js";
+import { validateDocument } from "../core/storage-schema.js";
 import { render } from "../core/render.js";
 import { closeModal, openModal } from "../ui/modal.js";
 import { taskLabels } from "../core/task-labels.js";
@@ -86,7 +86,7 @@ export function openTask(id) {
   $("#tPerson").innerHTML = state.people
     .map(
       (person) =>
-        `<option value="${person.id}">${esc(person.name || "Без имени")}</option>`,
+        `<option value="${esc(person.id)}">${esc(person.name || "Без имени")}</option>`,
     )
     .join("");
   $("#tPerson").value = task ? task.personId : state.people[0].id;
@@ -165,72 +165,40 @@ function saveTask() {
     start = prev ? prev.start : release.start;
   }
 
-  // У отпуска/больничного место своё; у задач очередь не может дать
-  // пустую раскладку при днях > 0, но проверка дешёвая — пусть будет.
-  if (!calendarType) {
-    const place = previewPlacement(
-      {
-        id: editingId || "__new",
-        releaseId: release.id,
-        personId,
-        start,
-        days,
-        type,
-        weekend,
-      },
-      release,
-      state.tasks,
-    );
-    if (!place.segs.length) {
-      err.textContent = "Задача не занимает ни одного дня";
-      return;
-    }
-  }
+  const previous = editingId
+    ? state.tasks.find((task) => task.id === editingId)
+    : null;
+  const candidate = {
+    ...previous,
+    id: editingId || uid(),
+    releaseId: release.id,
+    personId,
+    start,
+    days,
+    type,
+    number,
+    title,
+    status,
+    weekend,
+    labels,
+    daysMode: "work",
+  };
+  if (link) candidate.link = link;
+  else delete candidate.link;
 
-  if (editingId) {
-    const task = state.tasks.find((x) => x.id === editingId);
-    const movedPerson = task.personId !== personId;
-    Object.assign(task, {
-      personId,
-      start,
-      days,
-      type,
-      number,
-      title,
-      status,
-      weekend,
-      labels,
-      daysMode: "work",
-    });
-    // пустая ссылка — поля в данных нет (как у старых задач)
-    if (link) task.link = link;
-    else delete task.link;
-    // Сменили исполнителя — задача уходит в конец очереди нового
-    // человека: её прежнее место в массиве относилось к другому столбцу.
-    if (movedPerson) {
-      state.tasks = state.tasks.filter((x) => x.id !== task.id).concat(task);
-    }
-    toast("Задача обновлена");
-  } else {
-    // новая задача — в конец state.tasks, то есть в конец очереди
-    state.tasks.push({
-      id: uid(),
-      releaseId: release.id,
-      personId,
-      start,
-      days,
-      type,
-      number,
-      title,
-      status,
-      // пустая строка → поля нет: старая версия и экспорт видят те же данные
-      link: link || undefined,
-      labels,
-      weekend,
-      daysMode: "work",
-    });
-    toast("Задача добавлена");
+  // Новая задача и смена исполнителя ставят её в конец очереди.
+  const tasks =
+    !previous || previous.personId !== personId
+      ? state.tasks.filter((task) => task.id !== candidate.id).concat(candidate)
+      : state.tasks.map((task) => task.id === candidate.id ? candidate : task);
+  try {
+    validateDocument("data", { ...state, tasks });
+  } catch (error) {
+    err.textContent = error.message;
+    return;
   }
+  state.tasks = tasks;
+  toast(editingId ? "Задача обновлена" : "Задача добавлена");
 
   save();
   render();

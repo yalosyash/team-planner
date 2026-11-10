@@ -230,7 +230,7 @@ function createPlannerServer(options = {}) {
     },
   });
   const storageApi = createStorageApi(ROOT, { store });
-  const server = http.createServer(async (req, res) => {
+  async function handleRequest(req, res) {
     let url;
     try {
       url = decodeURIComponent((req.url || "").split("?")[0]);
@@ -355,11 +355,12 @@ function createPlannerServer(options = {}) {
 
     // --- список версий ---
     if (url === "/api/backups" && req.method === "GET") {
+      const backups = listBackups();
       res.writeHead(200, {
         "Content-Type": TYPES[".json"],
         "Cache-Control": "no-store",
       });
-      res.end(JSON.stringify({ backups: listBackups() }));
+      res.end(JSON.stringify({ backups }));
       return;
     }
 
@@ -482,6 +483,18 @@ function createPlannerServer(options = {}) {
         "Cache-Control": "no-store",
       });
       res.end(buf);
+    });
+  }
+
+  const server = http.createServer((req, res) => {
+    handleRequest(req, res).catch((error) => {
+      console.error("Ошибка HTTP-запроса:", req.method, req.url, error);
+      if (res.headersSent) {
+        res.destroy();
+        return;
+      }
+      res.writeHead(500, { "Content-Type": TYPES[".json"] });
+      res.end(JSON.stringify({ ok: false, error: "Внутренняя ошибка сервера" }));
     });
   });
 

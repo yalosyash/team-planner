@@ -230,10 +230,10 @@ assert.equal(
   ]).queue[0].start,
   "2026-11-17",
 );
-assert.equal(
-  planPerson("p", r, [task("A", 2001, { weekend: true })]).queue[0].segs.length,
-  2000,
+assert.throws(
+  () => planPerson("p", r, [task("A", 2001, { weekend: true })]),
+  /Длительность/,
 );
 console.log(
-  "Limits: weekend still skips absence; 2001-day input truncates to 2000 segments: OK",
+  "Limits: weekend still skips absence; unsupported duration is rejected: OK",
 );

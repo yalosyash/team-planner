@@ -40,7 +40,7 @@ const api = async (url, options = {}) => {
   try {
     let result;
     if (options.method === "POST") {
-      assert.equal(options.keepalive, true);
+      assert.notEqual(options.keepalive, true);
       const body = JSON.parse(options.body);
       posts.push({ kind, body });
       if (defer)
@@ -92,7 +92,7 @@ try {
   assert.equal(
     beacon,
     undefined,
-    "Do not duplicate in-flight keepalive writes",
+    "Do not duplicate in-flight writes",
   );
   defer = false;
   finish();
@@ -152,6 +152,13 @@ try {
   offline = true;
   storage.state.team = "Unsaved";
   storage.save();
+  navigator.sendBeacon = () => false;
+  events.pagehide();
+  assert.equal(storage.hasUnsaved(), true);
+  assert.ok(
+    [...copies.keys()].some((key) => key.startsWith("team-planner-unsaved-v4:")),
+    "A rejected beacon must retain recovery data",
+  );
   await storage.persist();
   assert.equal(storage.backend, "server");
   assert.equal(storage.hasUnsaved(), true);
@@ -181,7 +188,7 @@ try {
   });
   await assert.rejects(storage.initStorage(), /старым кодом/);
   console.log(
-    "State storage: recovery, category isolation, launcher merge, imports, keepalive, offline/conflicts and old-server guard passed",
+    "State storage: recovery, category isolation, launcher merge, imports, pagehide, offline/conflicts and old-server guard passed",
   );
 } finally {
   await fs.rm(root, { recursive: true, force: true });

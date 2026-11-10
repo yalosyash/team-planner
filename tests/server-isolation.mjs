@@ -23,6 +23,16 @@ try {
   });
   assert.equal(saved.status, 200);
   assert.deepEqual((await get(first)).data, data);
+  const backups = path.join(first.root, "data/backups");
+  await fs.rm(backups, { recursive: true, force: true });
+  await fs.writeFile(backups, "not a directory");
+  const unavailableBackups = await fetch(first.origin + "/api/backups");
+  assert.equal(unavailableBackups.status, 500);
+  assert.equal((await unavailableBackups.json()).ok, false);
+  assert.equal((await fetch(first.origin + "/api/health")).status, 200);
+  assert.deepEqual((await get(first)).data, data);
+  await fs.unlink(backups);
+  await fs.mkdir(backups);
   assert.equal((await get(second)).data, null);
   assert.deepEqual(
     JSON.parse(await fs.readFile(path.join(first.root, "data/data.json"))),

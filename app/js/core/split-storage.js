@@ -265,7 +265,6 @@ export function createHttpStore({ fetch = globalThis.fetch } = {}) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
-            keepalive: true,
           },
     );
     const result = await response.json();

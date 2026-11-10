@@ -6,9 +6,9 @@
    ============================================================ */
 import { addDays, diffDays, isWorkday } from "./dates.js";
 import { fmtDur, round } from "./util.js";
+import { assertDuration, PLANNING_HORIZON } from "./planning-contract.js";
 
 const EPS = 1e-9;
-const GUARD = 2000; // предохранитель от бесконечного цикла на битых данных
 
 /* отпуск и больничный: стоят на своих датах и в очередь не встают */
 export function isAbsence(task) {
@@ -30,12 +30,13 @@ function dayOff(task, date, absent) {
    «перепрыгивает» и не тратит на них длительность.
    Возвращает участки по дням, последний день и остаток в нём. */
 export function layoutFrom(task, start, used, releaseStart, absent) {
+  assertDuration(task.days);
   const segs = [];
   let day = start;
   let at = used || 0;
   let left = round(task.days || 0);
   let guard = 0;
-  while (left > EPS && guard++ < GUARD) {
+  while (left > EPS && guard++ < PLANNING_HORIZON) {
     if (dayOff(task, day, absent)) {
       day = addDays(day, 1);
       at = 0;
@@ -50,6 +51,10 @@ export function layoutFrom(task, start, used, releaseStart, absent) {
       at = 0;
     }
   }
+  if (left > EPS)
+    throw new RangeError(
+      `Задача не помещается в ${PLANNING_HORIZON} календарных дней с учётом выходных и отсутствий`,
+    );
   return { segs, day, used: at };
 }
 
